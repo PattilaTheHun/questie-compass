@@ -43,7 +43,7 @@
         <input class="sr" type="file" id="inp-lua" accept=".lua">
         <button class="btn hidden" id="btn-pick" title="Chrome/Edge only. Does not work for folders under Program Files.">🔖 Choose &amp; remember folder</button>
       </div>
-      <p class="hint" id="pick-hint" style="color:var(--text-3);font-size:13px;margin:8px 0 0">Usually <code>C:\Program Files (x86)\World of Warcraft\_classic_era_</code>. Your browser will ask to confirm “uploading” the folder — that is just how it grants this page read access; nothing leaves your computer. Picking only the <code>WTF</code> folder works too (you lose the installed-Questie and RestedXP extras).</p>
+      <p class="hint" id="pick-hint" style="color:var(--text-3);font-size:13px;margin:8px 0 0">Usually <code id="default-path">C:\Program Files (x86)\World of Warcraft\_classic_era_</code> <button class="iconbtn" id="btn-copy" style="padding:1px 7px;font-size:12px" title="Copy this path, then paste it into the folder dialog's address bar">copy path</button> — browsers won't let a page pick where the dialog opens, but Windows remembers your last choice. Your browser will ask to confirm “uploading” the folder — that is just how it grants this page read access; nothing leaves your computer. Picking only the <code>WTF</code> folder works too (you lose the installed-Questie and RestedXP extras).</p>
       <p class="hint" id="pick-hint2" style="color:var(--text-3);font-size:13px;margin:6px 0 0"></p>
       <div id="scan-status" style="margin-top:14px"></div>
     </div>

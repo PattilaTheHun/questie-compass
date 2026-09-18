@@ -37,12 +37,13 @@
     }
     $('#inp-dir').onchange = (e) => { if (e.target.files.length) onSource(FS.scanFileList(e.target.files)); };
     $('#inp-lua').onchange = (e) => { const f = e.target.files[0]; if (f) onSource({ flavor: '', questieLua: [{ account: 'chosen file', file: f }], rxpAccount: [], rxpChar: [], questieAddon: { present: false, files: {} , tocs: [] }, rxpAddon: { present: false, guideFiles: [] } }); };
+    const cp = $('#btn-copy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText($('#default-path').textContent); cp.textContent = 'copied ✓'; setTimeout(() => { cp.textContent = 'copy path'; }, 1800); } catch (e) { cp.textContent = 'select & copy manually'; } };
     document.addEventListener('click', onDocClick);
   }
 
   async function pickFolderFSA() {
     let handle;
-    try { handle = await window.showDirectoryPicker({ id: 'wow-folder', mode: 'read' }); }
+    try { handle = await window.showDirectoryPicker({ id: 'wow-folder', mode: 'read', startIn: 'documents' }); }
     catch (e) { status('Folder not opened. If Chrome said the folder “contains system files”, that is its rule for anything under Program Files — use <b>📁 Choose WoW folder</b> instead, which works for any location.', 'warn'); return; }
     await useHandle(handle);
   }
