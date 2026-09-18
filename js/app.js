@@ -29,51 +29,12 @@
     $('#btn-theme').onclick = () => { const cur = document.documentElement.getAttribute('data-theme'); const next = cur === 'light' ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', next); try { localStorage.setItem('qc-theme', next); } catch (e) { /* ignore */ } };
     $('#btn-restart').onclick = () => location.reload();
 
-    if (FS.supportsFSA) {
-      $('#btn-pick').classList.remove('hidden');
-      $('#btn-pick').onclick = pickFolderFSA;
-      $('#pick-hint2').innerHTML = 'Chrome and Edge can also <b>remember</b> the folder for one-click refreshes — but they refuse folders under <code>Program Files</code> (“contains system files”). If WoW lives elsewhere, use “Choose &amp; remember folder”.';
-      FS.loadHandle().then((h) => { if (h) { const b = $('#btn-reuse'); b.textContent = `↻ Re-read “${h.name}”`; b.classList.remove('hidden'); b.onclick = () => reuseHandle(h); $('#btn-forget').classList.remove('hidden'); $('#btn-forget').onclick = async () => { await FS.forgetHandle(); b.classList.add('hidden'); $('#btn-forget').classList.add('hidden'); }; } });
-    }
     $('#inp-dir').onchange = (e) => { if (e.target.files.length) onSource(FS.scanFileList(e.target.files)); };
     $('#inp-lua').onchange = (e) => { const f = e.target.files[0]; if (f) onSource({ flavor: '', questieLua: [{ account: 'chosen file', file: f }], rxpAccount: [], rxpChar: [], questieAddon: { present: false, files: {} , tocs: [] }, rxpAddon: { present: false, guideFiles: [] } }); };
     const cp = $('#btn-copy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText($('#default-path').textContent); cp.textContent = 'copied ✓'; setTimeout(() => { cp.textContent = 'copy path'; }, 1800); } catch (e) { cp.textContent = 'select & copy manually'; } };
     document.addEventListener('click', onDocClick);
   }
 
-  async function pickFolderFSA() {
-    let handle;
-    try { handle = await window.showDirectoryPicker({ id: 'wow-folder', mode: 'read', startIn: 'documents' }); }
-    catch (e) { status('Folder not opened. If Chrome said the folder “contains system files”, that is its rule for anything under Program Files — use <b>📁 Choose WoW folder</b> instead, which works for any location.', 'warn'); return; }
-    await useHandle(handle);
-  }
-  async function reuseHandle(handle) {
-    try {
-      let perm = await handle.queryPermission({ mode: 'read' });
-      if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'read' });
-      if (perm !== 'granted') { status('Permission to read the folder was not granted.', 'warn'); return; }
-    } catch (e) { status('Could not re-open the remembered folder. Please choose it again.', 'warn'); return; }
-    await useHandle(handle, true);
-  }
-  async function useHandle(handle, reused) {
-    status('Scanning folder…');
-    const flavors = await FS.detectFlavors(handle);
-    if (!flavors.length) { status(`No WoW data found in “${handle.name}”. Choose the <code>_classic_era_</code> folder or the <code>World of Warcraft</code> folder.`, 'bad'); return; }
-    let flavor = flavors.find((f) => f.name === '_classic_era_') || flavors[0];
-    if (flavors.length > 1) {
-      const pick = await chooseFlavor(flavors); if (!pick) return; flavor = pick;
-    }
-    if (!reused) await FS.saveHandle(handle);
-    const src = await FS.scanFlavorHandle(flavor.handle);
-    onSource(src);
-  }
-  function chooseFlavor(flavors) {
-    return new Promise((res) => {
-      const box = $('#scan-status');
-      box.innerHTML = `<div class="notice">Several game versions found. Which one? ${flavors.map((f, i) => `<button class="btn" data-flavor="${i}" style="margin:4px 6px 0 0">${esc(f.name)}</button>`).join('')}</div>`;
-      box.querySelectorAll('[data-flavor]').forEach((b) => { b.onclick = () => res(flavors[+b.dataset.flavor]); });
-    });
-  }
   function status(html, kind) { $('#scan-status').innerHTML = html ? `<div class="notice ${kind || ''}">${html}</div>` : ''; }
 
   /* ---------- source → characters ---------- */
