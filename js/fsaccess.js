@@ -11,8 +11,8 @@
 
   function idb() {
     return new Promise((res, rej) => {
-      const r = indexedDB.open(DB_NAME, 1);
-      r.onupgradeneeded = () => r.result.createObjectStore(STORE);
+      const r = indexedDB.open(DB_NAME, 2);
+      r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE); if (!d.objectStoreNames.contains('questdb')) d.createObjectStore('questdb'); };
       r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
     });
   }
@@ -129,8 +129,6 @@
         if (seg[3] === 'SavedVariables' && seg.length === 5) {
           if (seg[4] === 'Questie.lua') src.questieLua.push({ account, file: f });
           if (seg[4] === 'RXPGuides.lua') src.rxpAccount.push({ account, file: f });
-        } else if (seg.length === 6 && seg[4] === 'SavedVariables' && seg[5] === 'RXPGuides.lua') {
-          src.rxpChar.push({ account, realm: seg[3], name: seg[4], key: `${seg[4]} - ${seg[3]}`, file: f });
         } else if (seg.length === 7 && seg[5] === 'SavedVariables' && seg[6] === 'RXPGuides.lua') {
           src.rxpChar.push({ account, realm: seg[3], name: seg[4], key: `${seg[4]} - ${seg[3]}`, file: f });
         }
