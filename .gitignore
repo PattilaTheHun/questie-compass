@@ -1,0 +1,13 @@
+# secrets
+.secrets/
+# personal game data - never commit
+samples/
+Questie.lua
+*.lua.bak
+WTF/
+# spreadsheets / scratch
+*.xlsx
+*.pyc
+__pycache__/
+.DS_Store
+Thumbs.db

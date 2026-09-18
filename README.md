@@ -2,15 +2,15 @@
 
 **Find what you missed. See what it unlocks.**
 
-Questie Compass is a quest dependency explorer for **World of Warcraft Classic**. It reads your local Questie data and turns thousands of quest records into a practical answer to a much simpler question:
+Questie Compass is a privacy-first quest dependency explorer for **World of Warcraft Classic**. It reads your local Questie data and turns thousands of quest records into a practical answer to a much simpler question:
 
-> **What should I do next, and is an old quest preventing me from getting there?**
+> **What should I do next—and is an old quest preventing me from getting there?**
 
 Questie is excellent at showing where quests and objectives are located. Questie Compass adds another layer: it examines your completed quests, follows prerequisite chains, identifies missing links, and shows what those overlooked quests unlock.
 
 ## The problem it solves
 
-Classic questlines are full of prerequisites, breadcrumbs, mutually exclusive choices, dungeon lead-ins, and chains that begin several zones-or many levels-earlier.
+Classic questlines are full of prerequisites, breadcrumbs, mutually exclusive choices, dungeon lead-ins, and chains that begin several zones—or many levels—earlier.
 
 That can create some wonderfully confusing moments:
 
