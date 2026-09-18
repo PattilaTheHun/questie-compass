@@ -33,8 +33,8 @@
         </div>
         <aside class="sidecard">
           <b>Also syncs with your RestedXP guide</b>
-          Use RestedXP? Questie Compass can read your guide position and quest log and flag the upcoming guide steps that will not work as written, with the quest to go get first.
-          <span class="opt">Optional. Off if RestedXP is not installed.</span>
+          Use RestedXP? Questie Compass can read your guide position and quest log and flag upcoming guide steps that will not work as written.
+          <span class="opt">Optional. RestedXP not required.</span>
         </aside>
       </div>
       <ol class="steps">
@@ -45,11 +45,9 @@
       <div class="btn-row" style="margin-top:16px">
         <button class="btn primary" id="btn-choose">📁 Choose WoW folder</button>
         <input class="sr" type="file" id="inp-dir" webkitdirectory directory multiple>
-        <span class="sub" style="color:var(--text-3);font-size:13px">or</span>
-        <label class="btn" for="inp-lua">Just pick a Questie.lua</label>
         <input class="sr" type="file" id="inp-lua" accept=".lua">
       </div>
-      <p class="hint" id="pick-hint" style="color:var(--text-3);font-size:13px;margin:8px 0 0">Usually <code id="default-path">C:\Program Files (x86)\World of Warcraft\_classic_era_</code> <button class="iconbtn" id="btn-copy" style="padding:1px 7px;font-size:12px" title="Copy this path, then paste it into the folder dialog's address bar">copy path</button>. Browsers won't let a page pick where the dialog opens, but Windows remembers your last choice. Picking only the <code>WTF</code> folder works too (you lose the installed-Questie and RestedXP extras).</p>
+      <p class="hint" id="pick-hint" style="color:var(--text-3);font-size:13px;margin:8px 0 0">Usually <code id="default-path">C:\Program Files (x86)\World of Warcraft\_classic_era_</code> <button class="iconbtn" id="btn-copy" style="padding:1px 7px;font-size:12px" title="Copy this path, then paste it into the folder dialog's address bar">copy path</button>. Browsers won't let a page pick where the dialog opens, but Windows remembers your last choice.</p>
       <div id="scan-status" style="margin-top:14px"></div>
     </div>
     <div id="charsetup" class="card-b hidden" style="border-top:1px solid var(--line)"></div>
