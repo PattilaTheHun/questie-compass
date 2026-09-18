@@ -29,6 +29,13 @@
     $('#btn-theme').onclick = () => { const cur = document.documentElement.getAttribute('data-theme'); const next = cur === 'light' ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', next); try { localStorage.setItem('qc-theme', next); } catch (e) { /* ignore */ } };
     $('#btn-restart').onclick = () => location.reload();
 
+    $('#btn-choose').onclick = () => {
+      let seen = false; try { seen = localStorage.getItem('qc-upload-note') === '1'; } catch (e) { /* ignore */ }
+      if (seen) { $('#inp-dir').click(); return; }
+      $('#scan-status').innerHTML = `<div class="notice warn interstitial"><b>Heads up about the next dialog.</b> After you pick the folder, your browser will ask something like <i>“Upload N files to this site?”</i> That is the browser’s standard wording whenever a web page is allowed to read a folder, and it is misleading here: Questie Compass has no server to upload to. The files are opened by this page on your own computer, the way a desktop program would open them, and they never leave it. You can confirm this yourself by turning off Wi‑Fi after this page has loaded; everything still works.
+        <div class="btn-row"><button class="btn primary" id="btn-continue">OK, choose the folder</button><label class="btn" for="inp-lua">Pick just my Questie.lua instead</label><span class="hint" style="color:var(--text-3);font-size:13px">(one file, no folder prompt; you lose the installed-Questie and RestedXP extras)</span></div></div>`;
+      $('#btn-continue').onclick = () => { try { localStorage.setItem('qc-upload-note', '1'); } catch (e) { /* ignore */ } $('#inp-dir').click(); };
+    };
     $('#inp-dir').onchange = (e) => { if (e.target.files.length) onSource(FS.scanFileList(e.target.files)); };
     $('#inp-lua').onchange = (e) => { const f = e.target.files[0]; if (f) onSource({ flavor: '', questieLua: [{ account: 'chosen file', file: f }], rxpAccount: [], rxpChar: [], questieAddon: { present: false, files: {} , tocs: [] }, rxpAddon: { present: false, guideFiles: [] } }); };
     const cp = $('#btn-copy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText($('#default-path').textContent); cp.textContent = 'copied ✓'; setTimeout(() => { cp.textContent = 'copy path'; }, 1800); } catch (e) { cp.textContent = 'select & copy manually'; } };
