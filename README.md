@@ -67,6 +67,10 @@ When enabled, it compares upcoming RestedXP steps with your character's quest hi
 
 RestedXP support is entirely optional. Questie Compass does not require RestedXP, modify its guides, distribute guide content, or upload guide files anywhere.
 
+## Use it
+
+**https://pattilathehun.github.io/questie-compass/**
+
 ## How it works
 
 Questie Compass runs as a browser-based application hosted with GitHub Pages. There is no installer and no companion program running in the background.
@@ -90,7 +94,7 @@ It then compares those IDs with the quest database installed with Questie under:
 Interface\AddOns\Questie\
 ```
 
-Newer Questie installations may store database files in a separate `QuestieDB` addon directory. Questie Compass will support known layouts and fall back to a bundled Classic Era database snapshot when the installed database cannot be read.
+The installed database is evaluated in your browser (a small Lua interpreter runs in a background worker) and cached, so the report always matches the Questie version you actually play with. Newer Questie installations may store database files in a separate `QuestieDB` addon directory; when the installed database cannot be read, Questie Compass falls back to a bundled Classic Era snapshot that a scheduled job refreshes weekly from Questie's repository.
 
 If RestedXP analysis is enabled, the app also reads the locally installed guide files under `Interface\AddOns\RXPGuides`.
 
@@ -134,9 +138,18 @@ Support for additional Classic versions may be added later.
 
 ## Project status
 
-Questie Compass is currently under active development. The first release is focused on reliable Questie file detection, completed-quest analysis, prerequisite chains, catch-up recommendations, and a bundled Classic Era database fallback.
+Version 0.1 is live. It includes folder detection (with remembered access in Chrome/Edge), account and character selection, level/race/faction inference, the dependency engine, all report sections (Do these first, Coming up, Blocked, Questlines, Zone completion, Dungeon prep, Missed, Completed, All quests), reading the installed Questie database, the bundled snapshot fallback with weekly refresh, and the RestedXP guide check (including the cached premium guides in your SavedVariables, read locally only).
 
-Planned later improvements include expanded game-version support, printable reports, catch-up-list exports, enhanced dungeon detection, and deeper RestedXP guide analysis.
+Planned improvements: additional game versions (Anniversary/TBC, Season of Discovery), printable reports and catch-up-list export, enhanced dungeon detection via NPC/object spawn zones, and RestedXP step-level navigation.
+
+## Development
+
+```
+node tests/engine.test.js <questdb-json-with-completed-ids>   # engine regression (see tests/README.md)
+python tools/build_questdb.py --out data                       # rebuild the bundled snapshot (needs pip install lupa)
+```
+
+Open `index.html` through any static web server (a plain `file://` page cannot start the background worker that reads your installed Questie database; the bundled snapshot still works).
 
 ## Technical overview
 
@@ -146,7 +159,7 @@ Questie Compass is designed as a client-side single-page application:
 - hosted on GitHub Pages
 - local folder access through the browser's File System Access API when available
 - Questie SavedVariables parsing in JavaScript
-- local Questie database parsing with a bundled JSON snapshot as fallback
+- local Questie database evaluation in a Web Worker via [fengari](https://github.com/fengari-lua/fengari-web) (Lua 5.3 in JavaScript, MIT), with a bundled snapshot as fallback
 - no account system, backend database, or upload service
 
 The dependency engine follows Questie's prerequisite concepts, including grouped prerequisites, alternative prerequisites, exclusive quests, parent and child quests, breadcrumbs, level requirements, race and class restrictions, profession requirements, and repeatable quests.
