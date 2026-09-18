@@ -16,6 +16,7 @@ NEEDED = [
     "Database/QuestieDB.lua", "Database/Constants.lua", "Database/Classic/classicQuestDB.lua",
     "Database/Corrections/classicQuestFixes.lua", "Database/Corrections/QuestieQuestBlacklist.lua",
     "Localization/lookups/lookupZones.lua", "Modules/Expansions.lua",
+    "Database/Classic/classicNpcDB.lua", "Database/Classic/classicObjectDB.lua", "Database/QuestXP/DB/xpDB-classic.lua",
 ]
 SPARSE_DIRS = ["Database", "Localization/lookups", "Modules"]
 
@@ -74,6 +75,9 @@ def extract(root):
     run("Localization/lookups/lookupZones.lua")
     run("Database/Corrections/classicQuestFixes.lua")
     run("Database/Corrections/QuestieQuestBlacklist.lua")
+    run("Database/Classic/classicNpcDB.lua")
+    run("Database/Classic/classicObjectDB.lua")
+    run("Database/QuestXP/DB/xpDB-classic.lua")
     lua.execute(r"""
         local QDB = QuestieLoader:ImportModule("QuestieDB")
         QUESTS = load(QDB.questData)()
@@ -85,6 +89,9 @@ def extract(root):
         BLACKLIST = {}
         local ok, bl = pcall(function() return QuestieLoader:ImportModule("QuestieQuestBlacklist"):Load() end)
         if ok then for id, v in pairs(bl) do if v == true then BLACKLIST[id] = true end end end
+        NPCS = load(QDB.npcData)()
+        OBJECTS = load(QDB.objectData)()
+        XP = QuestieLoader:ImportModule("QuestXP").db or {}
     """)
     keys = dict(lua.eval("QuestieLoader:ImportModule('QuestieDB').questKeys").items())
     def to_py(v):
@@ -99,14 +106,40 @@ def extract(root):
               "nextQuestInChain", "questFlags", "specialFlags", "parentQuest", "breadcrumbForQuestId", "breadcrumbs",
               "requiredMaxLevel", "availableUntilCompleted", "availableStartingWith", "objectivesText",
               "requiredSpecialization", "requiredSpell"]
+    def ref(tbl):
+        """startedBy/finishedBy: positional {creature, object, item} tables -> {npc:[], obj:[], item:[]}"""
+        if tbl is None: return None
+        out = {}
+        for idx, key in ((1, "npc"), (2, "obj"), (3, "item")):
+            v = tbl[idx]
+            if v is not None:
+                ids = [int(x) for x in to_py(v) if isinstance(x, (int, float))]
+                if ids: out[key] = ids
+        return out or None
     quests = {}
+    npc_ids, obj_ids = set(), set()
+    XP = lua.eval("XP")
     for qid, row in lua.eval("QUESTS").items():
         d = {}
         for name in wanted:
             v = row[keys[name]]
             if v is not None:
                 d[name] = to_py(v)
+        st = ref(row[keys["startedBy"]]); fi = ref(row[keys["finishedBy"]])
+        if st: d["start"] = st; npc_ids.update(st.get("npc", [])); obj_ids.update(st.get("obj", []))
+        if fi: d["finish"] = fi; npc_ids.update(fi.get("npc", [])); obj_ids.update(fi.get("obj", []))
+        x = XP[int(qid)]
+        if x is not None and x[1] and x[2] and x[1] > 0 and x[2] > 0: d["xp"] = [int(x[1]), int(x[2])]
         quests[str(int(qid))] = d
+    NPCS, OBJECTS = lua.eval("NPCS"), lua.eval("OBJECTS")
+    npcs = {}
+    for i in sorted(npc_ids):
+        n = NPCS[i]
+        if n is not None: npcs[str(i)] = [n[1], int(n[9] or 0)]
+    objects = {}
+    for i in sorted(obj_ids):
+        o = OBJECTS[i]
+        if o is not None: objects[str(i)] = [o[1], int(o[5] or 0)]
     blacklist = sorted(int(k) for k in lua.eval("BLACKLIST").keys())
     zones = {}
     for _, tbl in lua.eval("QuestieLoader:ImportModule('l10n').zoneLookup").items():
@@ -114,7 +147,7 @@ def extract(root):
             if isinstance(name, str):
                 zones.setdefault(str(int(zid)), name)
     sort_keys = {str(int(v)): k for k, v in lua.eval("QuestieLoader:ImportModule('QuestieDB').sortKeys").items()}
-    return {"quests": quests, "blacklist": blacklist, "zones": zones, "sortKeys": sort_keys}, int(lua.eval("FIXCOUNT"))
+    return {"quests": quests, "blacklist": blacklist, "zones": zones, "sortKeys": sort_keys, "npcs": npcs, "objects": objects}, int(lua.eval("FIXCOUNT"))
 
 def main():
     ap = argparse.ArgumentParser()

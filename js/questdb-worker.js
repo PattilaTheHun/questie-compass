@@ -36,6 +36,7 @@ if okFix and type(fixesMod) == "table" then
     if quests[id] then for k, v in pairs(fix) do quests[id][k] = v; fixcount = fixcount + 1 end end
   end
 end
+local XP = QuestieLoader:ImportModule("QuestXP").db or {}
 local blacklist = {}
 local okBL, bl = pcall(function() return QuestieLoader:ImportModule("QuestieQuestBlacklist"):Load() end)
 if okBL and type(bl) == "table" then for id, v in pairs(bl) do if v == true then blacklist[#blacklist+1] = id end end end
@@ -84,6 +85,20 @@ for id, row in pairs(quests) do
         out[#out+1] = encstr(k); out[#out+1] = ":"; enc(v, out)
       end
     end
+    local function ref(tbl)
+      if type(tbl) ~= "table" then return nil end
+      local parts = {}
+      for idx, key in ipairs({"npc","obj","item"}) do
+        local v = tbl[idx]
+        if type(v) == "table" then local ids = {}; for _, x in pairs(v) do if type(x) == "number" then ids[#ids+1] = x end end; if #ids > 0 then table.sort(ids); parts[#parts+1] = encstr(key) .. ":[" .. table.concat(ids, ",") .. "]" end end
+      end
+      if #parts == 0 then return nil end
+      return "{" .. table.concat(parts, ",") .. "}"
+    end
+    local st = ref(row[keys.startedBy]); if st then out[#out+1] = ',"start":' .. st end
+    local fi = ref(row[keys.finishedBy]); if fi then out[#out+1] = ',"finish":' .. fi end
+    local x = XP[id]
+    if type(x) == "table" and (x[1] or 0) > 0 and (x[2] or 0) > 0 then out[#out+1] = string.format(',"xp":[%d,%d]', x[1], x[2]) end
     out[#out+1] = "}"
   end
 end
@@ -124,6 +139,7 @@ self.onmessage = (ev) => {
     if (files.zones) { try { run(files.zones, 'lookupZones.lua'); } catch (e) { /* zones optional */ } }
     step('Loading corrections…'); run(files.questFixes, 'classicQuestFixes.lua');
     if (files.blacklist) { try { run(files.blacklist, 'QuestieQuestBlacklist.lua'); } catch (e) { /* optional */ } }
+    if (files.xp) { try { run(files.xp, 'xpDB-classic.lua'); } catch (e) { /* optional */ } }
     step('Applying corrections and exporting…');
     const json = run(EXTRACT, 'extract');
     const db = JSON.parse(json);

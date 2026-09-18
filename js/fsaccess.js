@@ -99,6 +99,7 @@
         src.questieAddon.files.blacklist = await getFile(corr, 'QuestieQuestBlacklist.lua');
         src.questieAddon.files.zones = await getFile(await getDir(questie, 'Localization', 'lookups'), 'lookupZones.lua');
         src.questieAddon.files.expansions = await getFile(await getDir(questie, 'Modules'), 'Expansions.lua');
+        src.questieAddon.files.xp = await getFile(await getDir(dbDir, 'QuestXP', 'DB'), 'xpDB-classic.lua');
       }
     }
     const questieDB = await getDir(addons, 'QuestieDB');
@@ -149,6 +150,7 @@
             if (r.endsWith('Database/Classic/classicQuestDB.lua')) src.questieAddon.files.questDB = f;
             if (r.endsWith('Database/Corrections/classicQuestFixes.lua')) src.questieAddon.files.questFixes = f;
             if (r.endsWith('Database/Corrections/QuestieQuestBlacklist.lua')) src.questieAddon.files.blacklist = f;
+            if (r.endsWith('Database/QuestXP/DB/xpDB-classic.lua')) src.questieAddon.files.xp = f;
           }
           if (r.endsWith('Localization/lookups/lookupZones.lua')) src.questieAddon.files.zones = f;
           if (r.endsWith('Modules/Expansions.lua')) src.questieAddon.files.expansions = f;

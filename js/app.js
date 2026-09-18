@@ -15,7 +15,7 @@
     player: { level: 1, raceBit: 0, classBit: 0, faction: '' },
     rxp: { available: false, enabled: false, charState: null, chapters: [], evaluation: null },
     analysis: null, report: null,
-    f: { lo: 1, hi: 60, zone: '', cat: '', status: '', q: '', hideProf: false, hideEvents: true },
+    f: { lo: 1, hi: 60, zone: '', cat: '', status: '', q: '', hideProf: false, hideEvents: true, wowColors: true },
     open: new Set(), showAllCompleted: false, sortKey: 'level', sortDir: 1,
   };
   try { const f = JSON.parse(localStorage.getItem('qc-filters') || 'null'); if (f) Object.assign(state.f, f); } catch (e) { /* ignore */ }
@@ -27,7 +27,7 @@
     state.dbInfo = { kind: 'snapshot', label: `bundled snapshot (Questie ${meta.questieTag || '?'})`, date: meta.builtAt || '' };
     $('#ftr-meta').textContent = meta.builtAt ? ` · Quest data snapshot ${meta.builtAt}` : '';
     $('#btn-theme').onclick = () => { const cur = document.documentElement.getAttribute('data-theme'); const next = cur === 'light' ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', next); try { localStorage.setItem('qc-theme', next); } catch (e) { /* ignore */ } };
-    $('#btn-restart').onclick = () => location.reload();
+    $('#btn-restart').onclick = () => { try { const f = JSON.parse(localStorage.getItem('qc-filters') || '{}'); f.zone = ''; f.cat = ''; f.status = ''; f.q = ''; localStorage.setItem('qc-filters', JSON.stringify(f)); } catch (e) { /* ignore */ } location.reload(); };
 
     $('#btn-choose').onclick = () => {
       let seen = false; try { seen = localStorage.getItem('qc-upload-note') === '1'; } catch (e) { /* ignore */ }
@@ -63,7 +63,7 @@
       status(pills.join(' '));
       try {
         const res = await QC.LocalDB.load(src.questieAddon, (msg) => { const p = $('#pill-db'); if (p) p.textContent = msg; });
-        if (res && res.db) { state.db = res.db; state.dbInfo = { kind: 'local', label: `your installed Questie ${res.version || ''}`.trim(), date: '' }; }
+        if (res && res.db) { res.db.npcs = res.db.npcs || (window.QC_SNAPSHOT || {}).npcs; res.db.objects = res.db.objects || (window.QC_SNAPSHOT || {}).objects; state.db = res.db; state.dbInfo = { kind: 'local', label: `your installed Questie ${res.version || ''}`.trim(), date: '' }; }
         const p = $('#pill-db'); if (p) { p.textContent = res && res.db ? `Quest data: your installed Questie ${res.version || ''}` : `Installed Questie not readable. Using bundled snapshot`; p.className = 'pill ' + (res && res.db ? 'ok' : 'warn'); }
       } catch (e) {
         const p = $('#pill-db'); if (p) { p.textContent = 'Installed Questie not readable. Using bundled snapshot'; p.className = 'pill warn'; }
@@ -206,6 +206,7 @@
         <input type="search" id="f-q" placeholder="Search quest or zone…" value="${esc(state.f.q)}">
         <label class="inline-toggle"><input type="checkbox" id="f-prof" ${state.f.hideProf ? 'checked' : ''}> Hide professions</label>
         <label class="inline-toggle"><input type="checkbox" id="f-events" ${state.f.hideEvents ? 'checked' : ''}> Hide holiday / PvP</label>
+        <label class="inline-toggle" title="Color quest names and levels the way the in-game quest log does, relative to your level"><input type="checkbox" id="f-colors" ${state.f.wowColors ? 'checked' : ''}> Quest-log colors</label>
       </div>
 
       <div class="tiles">
@@ -248,6 +249,7 @@
     $('#f-status').onchange = (e) => { state.f.status = e.target.value; render(); };
     $('#f-prof').onchange = (e) => { state.f.hideProf = e.target.checked; render(); };
     $('#f-events').onchange = (e) => { state.f.hideEvents = e.target.checked; render(); };
+    $('#f-colors').onchange = (e) => { state.f.wowColors = e.target.checked; render(); };
     let t; $('#f-q').oninput = (e) => { clearTimeout(t); const v = e.target.value; t = setTimeout(() => { state.f.q = v; render(); const el = $('#f-q'); el.focus(); el.setSelectionRange(v.length, v.length); }, 250); };
   }
   function tile(n, label, kind, target) { return `<a class="tile ${kind}" href="#${target}"><div class="n">${n}</div><div class="l">${esc(label)}</div></a>`; }
@@ -260,11 +262,12 @@
   function qrow(r, extraMeta, side, detail, opts) {
     opts = opts || {};
     const key = (opts.keyPrefix || '') + r.id; const isOpen = state.open.has(key);
+    const dc = state.f.wowColors ? ` diff-${r.difficulty}` : '';
     return `<li class="q" data-q="${r.id}">
-      <div class="lvl"><b>${r.level || '–'}</b>${r.reqLevel ? `req ${r.reqLevel}` : ''}</div>
+      <div class="lvl"><b class="${dc}">${r.level || '–'}</b>${r.reqLevel ? `req ${r.reqLevel}` : ''}</div>
       <div>
-        <div class="name"><a href="${wh(r.id)}" target="_blank" rel="noopener" title="Open on Wowhead">${esc(r.name)}</a> <span style="color:var(--text-3);font-weight:400;font-size:12px">#${r.id}</span></div>
-        <div class="meta">${r.zone ? `<span>${esc(r.zone)}</span>` : ''}${r.category !== 'Zone' ? `<span class="tag">${esc(r.category)}</span>` : ''}${r.dungeon ? `<span class="tag info">${esc(r.dungeon)}</span>` : ''}${extraMeta || ''}${detail ? ` <a href="#" data-toggle="${esc(key)}">${isOpen ? 'Hide details' : 'Details'}</a>` : ''}</div>
+        <div class="name"><a class="${dc}" href="${wh(r.id)}" target="_blank" rel="noopener" title="Open on Wowhead">${esc(r.name)}</a> <span style="color:var(--text-3);font-weight:400;font-size:12px">#${r.id}</span></div>
+        <div class="meta">${r.zone ? `<span>${esc(r.zone)}</span>` : ''}${r.xp && !r.done ? `<span class="tag xp">${r.xp.toLocaleString()} XP</span>` : ''}${r.startText ? `<span class="who" title="Quest giver">▸ ${esc(r.startText)}</span>` : ''}${r.category !== 'Zone' ? `<span class="tag">${esc(r.category)}</span>` : ''}${r.dungeon ? `<span class="tag info">${esc(r.dungeon)}</span>` : ''}${extraMeta || ''}${detail ? ` <a href="#" data-toggle="${esc(key)}">${isOpen ? 'Hide details' : 'Details'}</a>` : ''}</div>
         ${r.objective && !opts.noObj ? `<div class="obj">${esc(r.objective)}</div>` : ''}
       </div>
       <div class="side">${side || statusTag(r)}</div>
@@ -276,7 +279,7 @@
     return `<div class="lbl">Requires</div><ul>${r.prereqs.map((s) => `<li>${s.met ? '✅' : '❌'} ${s.options.map((o) => `<a href="${wh(o.id)}" target="_blank" rel="noopener">${esc(o.name)}</a>${o.done ? ' <span class="tag ok">done</span>' : ''}`).join(' <i>or</i> ')}</li>`).join('')}</ul>`;
   }
   function groupByZone(rows) { const m = new Map(); for (const r of rows) { const z = r.zone || 'Other'; if (!m.has(z)) m.set(z, []); m.get(z).push(r); } return Array.from(m.entries()).sort((a, b) => b[1].length - a[1].length); }
-  function zoneGroups(rows, rowFn, sortInZone) { return groupByZone(rows).map(([z, rs]) => { if (sortInZone) rs = rs.slice().sort(sortInZone); return `<div class="zone-h"><h3>${esc(z)}</h3><span class="c">${rs.length}</span></div><ul class="qlist">${rs.map(rowFn).join('')}</ul>`; }).join(''); }
+  function zoneGroups(rows, rowFn, sortInZone) { return groupByZone(rows).map(([z, rs]) => { if (sortInZone) rs = rs.slice().sort(sortInZone); return `<div class="zone-h"><h3 class="zone-name">${esc(z)}</h3><span class="c">${rs.length}</span></div><ul class="qlist">${rs.map(rowFn).join('')}</ul>`; }).join(''); }
 
   function renderCatchUp(list, R) {
     if (!list.length) return `<div class="empty">Nothing to catch up on in this range. Every blocked quest here is waiting on other ${R.lo}–${R.hi} quests, not on something you skipped.</div>`;
@@ -420,8 +423,8 @@
     rows.sort((a, b) => { const x = a[k], y = b[k]; return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y))) * d || a.level - b.level; });
     const th = (key, label) => `<th data-sort="${key}">${label}${state.sortKey === key ? (d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
     const limit = state.open.has('all-more') ? rows.length : 200;
-    return `<table class="all"><thead><tr>${th('level', 'Lvl')}${th('reqLevel', 'Req')}${th('name', 'Quest')}${th('zone', 'Zone')}${th('category', 'Type')}${th('status', 'Status')}${th('chainName', 'Questline')}${th('unlocksTotal', 'Leads to')}</tr></thead><tbody>
-      ${rows.slice(0, limit).map((r) => `<tr><td class="num">${r.level}</td><td class="num">${r.reqLevel || ''}</td><td><a href="${wh(r.id)}" target="_blank" rel="noopener">${esc(r.name)}</a></td><td>${esc(r.zone)}</td><td>${esc(r.category)}</td><td>${statusTag(r)}</td><td style="color:var(--text-2)">${esc(r.chainName)}${r.chainSize > 1 ? ` <small style="color:var(--text-3)">(${r.chainSize})</small>` : ''}</td><td class="num">${r.unlocksTotal || ''}</td></tr>`).join('')}
+    return `<table class="all"><thead><tr>${th('level', 'Lvl')}${th('reqLevel', 'Req')}${th('name', 'Quest')}${th('zone', 'Zone')}${th('category', 'Type')}${th('status', 'Status')}${th('chainName', 'Questline')}${th('unlocksTotal', 'Leads to')}${th('xp', 'XP')}</tr></thead><tbody>
+      ${rows.slice(0, limit).map((r) => `<tr><td class="num${state.f.wowColors ? ' diff-' + r.difficulty : ''}">${r.level}</td><td class="num">${r.reqLevel || ''}</td><td><a class="${state.f.wowColors ? 'diff-' + r.difficulty : ''}" href="${wh(r.id)}" target="_blank" rel="noopener">${esc(r.name)}</a></td><td>${esc(r.zone)}</td><td>${esc(r.category)}</td><td>${statusTag(r)}</td><td style="color:var(--text-2)">${esc(r.chainName)}${r.chainSize > 1 ? ` <small style="color:var(--text-3)">(${r.chainSize})</small>` : ''}</td><td class="num">${r.unlocksTotal || ''}</td><td class="num">${r.xp ? r.xp.toLocaleString() : ''}</td></tr>`).join('')}
     </tbody></table>${rows.length > limit ? `<div class="more"><a href="#" data-toggle="all-more">Show all ${rows.length} rows</a></div>` : ''}`;
   }
 

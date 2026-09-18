@@ -28,13 +28,13 @@
     if (typeof Worker === 'undefined') return null;
     const toc = addon.tocs && addon.tocs.find((t) => /Classic/i.test(t.name)) || (addon.tocs || [])[0];
     const version = toc ? versionFromToc(await toc.file.text()) : '';
-    const key = `v${version}|${f.questDB.size}|${f.questFixes.size}|${f.blacklist ? f.blacklist.size : 0}`;
+    const key = `s2|v${version}|${f.questDB.size}|${f.questFixes.size}|${f.blacklist ? f.blacklist.size : 0}`;
     const cached = await cacheGet(key);
     if (cached) return { db: cached, version, ms: 0, cached: true };
 
     progress && progress('Reading installed Questie files…');
     const texts = {};
-    for (const k of ['questieDB', 'constants', 'questDB', 'questFixes', 'blacklist', 'zones', 'expansions']) if (f[k]) texts[k] = await f[k].text();
+    for (const k of ['questieDB', 'constants', 'questDB', 'questFixes', 'blacklist', 'zones', 'expansions', 'xp']) if (f[k]) texts[k] = await f[k].text();
 
     return new Promise((resolve) => {
       let worker;

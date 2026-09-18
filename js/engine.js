@@ -48,6 +48,16 @@
     INELIGIBLE: 'Not for this character',
   };
 
+  /** WoW quest-log color class for a quest level vs the player's level: trivial (gray) / easy (green) / normal (yellow) / hard (orange) / very-hard (red). */
+  function difficulty(questLevel, playerLevel) {
+    if (!questLevel) return 'normal';
+    const diff = questLevel - playerLevel;
+    if (diff >= 5) return 'very-hard';
+    if (diff >= 3) return 'hard';
+    if (diff >= -2) return 'normal';
+    const gray = playerLevel <= 5 ? 0 : playerLevel <= 39 ? playerLevel - 5 - Math.floor(playerLevel / 10) : playerLevel - 1 - Math.floor(playerLevel / 5);
+    return questLevel > gray ? 'easy' : 'trivial';
+  }
   function titleCase(s) {
     return String(s).toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   }
@@ -79,6 +89,25 @@
     }
 
     const name = (i) => (Q[i] ? Q[i].name : `Quest ${i}`);
+    const NPCS = db.npcs || {}, OBJECTS = db.objects || {};
+    function whoText(ref) {
+      if (!ref) return '';
+      const parts = [];
+      for (const i of ref.npc || []) { const n = NPCS[i]; parts.push(n ? `${n[0]}${n[1] && ZONES[n[1]] ? ' (' + ZONES[n[1]] + ')' : ''}` : `NPC #${i}`); }
+      for (const i of ref.obj || []) { const o = OBJECTS[i]; parts.push(o ? `${o[0]}${o[1] && ZONES[o[1]] ? ' (' + ZONES[o[1]] + ')' : ''}` : `Object #${i}`); }
+      for (const i of ref.item || []) parts.push(`item #${i}`);
+      return parts.join(' or ');
+    }
+    /** Quest XP at the player's level (cmangos formula, as used by Questie). Returns 0 at max level. */
+    function questXP(q) {
+      if (!q.xp || LEVEL >= 60) return 0;
+      const [qLevel, base] = q.xp;
+      let mult = 2 * (qLevel - LEVEL) + 20; if (mult < 1) mult = 1; else if (mult > 10) mult = 10;
+      let xp = base * mult / 10;
+      if (xp <= 100) xp = 5 * Math.floor((xp + 2) / 5); else if (xp <= 500) xp = 10 * Math.floor((xp + 5) / 10);
+      else if (xp <= 1000) xp = 25 * Math.floor((xp + 12) / 25); else xp = 50 * Math.floor((xp + 25) / 50);
+      return Math.floor(xp);
+    }
 
     function zoneName(q) {
       const z = q.zoneOrSort;
@@ -231,6 +260,8 @@
         repeatable: !!((q.specialFlags || 0) & 1),
         dungeon: dungeonZoneIds.get(q.zoneOrSort) || null,
         unlocks: Array.from(unlocks[id] || []).filter((u) => ELIG.has(u)),
+        xp: questXP(q), startText: whoText(q.start), finishText: whoText(q.finish),
+        difficulty: difficulty(q.questLevel || 0, LEVEL),
       };
     }
     for (const id of Object.keys(rows)) {
@@ -409,7 +440,7 @@
     return { faction, raceBit, raceNote, level: maxLvl };
   }
 
-  const api = { analyze, parseQuestieLua, inferCharacter, RACES, RACE_LABEL, CLASSES, CLASS_LABEL, STATUS, HORDE_MASK, ALLIANCE_MASK, DUNGEON_LEVELS };
+  const api = { analyze, parseQuestieLua, inferCharacter, difficulty, RACES, RACE_LABEL, CLASSES, CLASS_LABEL, STATUS, HORDE_MASK, ALLIANCE_MASK, DUNGEON_LEVELS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.QC = Object.assign(root.QC || {}, api);
 })(typeof window !== 'undefined' ? window : globalThis);
