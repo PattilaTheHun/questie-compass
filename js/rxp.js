@@ -125,25 +125,44 @@
         if (line.startsWith('#')) { g.tags.push(line.slice(1)); continue; }
       }
       if (/^step\b/.test(line)) {
-        step = { filter: (line.match(/<<\s*(.*)$/) || [, ''])[1].trim(), optional: false, actions: [], accepts: [], turnins: [], completes: [], xp: [], text: [], label: '' };
+        step = { filter: (line.match(/<<\s*(.*)$/) || [, ''])[1].trim(), optional: false, actions: [], accepts: [], turnins: [], completes: [], collects: [], gotos: [], mobs: [], xp: [], text: [], label: '', xprate: '', season: '' };
         g.steps.push(step); continue;
       }
       if (!step) continue;
       if (line === '#optional') { step.optional = true; continue; }
       if (line.startsWith('#label ')) { step.label = line.slice(7).trim(); continue; }
+      if (line.startsWith('#xprate')) { step.xprate = line.slice(7).trim(); continue; }
+      if (line.startsWith('#season')) { step.season = line.slice(7).trim(); continue; }
       let m;
       if ((m = /^\.accept\s+(\d+)(?:\s*>>\s*(.*))?/.exec(line))) { const a = { kind: 'accept', id: +m[1], text: (m[2] || '').trim(), filter: tailFilter(line) }; step.accepts.push(a); step.actions.push(a); continue; }
       if ((m = /^\.turnin\s+(\d+)(?:\s*>>\s*(.*))?/.exec(line))) { const t = { kind: 'turnin', id: +m[1], text: (m[2] || '').trim(), filter: tailFilter(line) }; step.turnins.push(t); step.actions.push(t); continue; }
-      if ((m = /^\.complete\s+(\d+)/.exec(line))) { step.completes.push(+m[1]); continue; }
+      if ((m = /^\.complete\s+(\d+)(?:\s*,\s*(\d+))?(?:\s*,\s*(\d+))?/.exec(line))) { step.completes.push({ id: +m[1], obj: m[2] ? +m[2] : 0, count: m[3] ? +m[3] : 0, filter: tailFilter(line) }); continue; }
+      if ((m = /^\.collect\s+(\d+)\s*,\s*(\d+)(?:\s*,\s*(\d+))?/.exec(line))) { step.collects.push({ item: +m[1], count: +m[2], quest: m[3] ? +m[3] : 0, text: (line.split('>>')[1] || '').trim(), filter: tailFilter(line) }); continue; }
+      if ((m = /^\.goto\s+([^,]+),\s*([\d.]+)\s*,\s*([\d.]+)/.exec(line))) { step.gotos.push({ zone: m[1].trim(), x: +m[2], y: +m[3] }); if (line.includes('>>')) step.text.push(cleanText(line.split('>>')[1])); continue; }
+      if ((m = /^\.(mob|unitscan|target)\s+(.+?)(?:\s*>>.*)?$/.exec(line))) { for (const n of m[2].split(',')) if (n.trim()) step.mobs.push(n.trim()); continue; }
       if ((m = /^\.xp\s+([<>]?)(\d+)/.exec(line))) { step.xp.push({ op: m[1] || '>=', level: +m[2] }); continue; }
-      if (line.startsWith('>>')) step.text.push(cleanText(line.slice(2)));
+      if (line.startsWith('>>')) { step.text.push(cleanText(line.slice(2))); continue; }
+      if (line.includes('>>') && /^\.(accept|turnin|collect|train|fly|hs|vendor|money|xp|zone|subzone|itemcount|use|cast|skill|trainer)\b/.test(line)) { const t = cleanText(line.split('>>')[1].replace(/<<.*$/, '')); if (t && !step.text.includes(t)) step.text.push(t); }
     }
     return g;
   }
+  /**
+   * Assign RestedXP's visible step numbers. Calibrated against the in-game window: a step is shown when its class/race/faction
+   * filter matches, its #xprate tag (if any) matches the server rate, and it is not a Season of Discovery (#season N>0) step; level-gated (.xp) steps still count.
+   */
+  function numberSteps(guide, player, xprate) {
+    xprate = xprate || 1; let n = 0;
+    for (const st of guide.steps) {
+      let visible = filterApplies(st.filter, player);
+      if (visible && st.xprate) { const m = /^([<>])\s*([\d.]+)/.exec(st.xprate); if (m) visible = m[1] === '<' ? xprate < +m[2] : xprate > +m[2]; }
+      if (visible && st.season && parseInt(st.season, 10) > 0) visible = false; // Season of Discovery phase steps are not shown on Era
+      st.visible = visible; st.num = visible ? ++n : 0;
+    }
+    guide.visibleCount = n; return n;
+  }
   function tailFilter(line) { const m = /<<\s*([^<>]*)$/.exec(line); return m ? m[1].trim() : ''; }
   function cleanText(s) {
-    return s.replace(/\|T[^|]*\|t/g, '').replace(/\|c[^|]*\|r/g, (x) => x.replace(/\|c[A-Za-z0-9_]*/, '').replace(/\|r$/, ''))
-      .replace(/\|c[A-Za-z0-9_]*/g, '').replace(/\|r/g, '').trim();
+    return String(s).replace(/\|T[^|]*\|t/g, '').replace(/\|cRXP_[A-Z]+_/g, '').replace(/\|c[0-9a-fA-F]{8}/g, '').replace(/\|r/g, '').replace(/\s+/g, ' ').trim();
   }
 
   /**
@@ -208,12 +227,13 @@
     let reachedCurrent = !charState.currentGuideName; // if we don't know position, everything is "upcoming"
     for (const g of chapters) {
       const isCurrent = g.name === charState.currentGuideName && g.group === charState.currentGuideGroup;
+      if (g.steps.length && g.steps[0].num === undefined) numberSteps(g, player);
       const ch = { guide: g, isCurrent, steps: [], issues: { blocked: 0, cascade: 0, noquest: 0, done: 0, missed: 0, unknown: 0 }, applies: filterApplies(g.filter, player) };
       g.steps.forEach((st, i) => {
-        const applies = ch.applies && filterApplies(st.filter, player);
-        const isCurrentStep = isCurrent && (i + 1) === charState.currentStep;
+        const applies = ch.applies && st.visible;
+        const isCurrentStep = isCurrent && st.num === charState.currentStep;
         if (isCurrentStep) reachedCurrent = true;
-        const past = isCurrent && (i + 1) < charState.currentStep; // steps already behind the player in the current chapter
+        const past = isCurrent && st.visible && st.num < charState.currentStep; // steps already behind the player in the current chapter
         const items = [], turnins = [];
         for (const act of st.actions) {
           if (act.filter && !filterApplies(act.filter, player)) continue;
@@ -248,14 +268,14 @@
           if (applies && !past && ['blocked', 'cascade', 'done', 'missed', 'unknown'].includes(issue)) ch.issues[issue] = (ch.issues[issue] || 0) + 1;
           items.push({ id: act.id, name: r ? r.name : (charState.questNames[act.id] || act.text || `Quest ${act.id}`), row: r || null, issue, missing, causes, status: r ? r.status : '' });
         }
-        ch.steps.push({ index: i + 1, applies, optional: st.optional, past, accepts: items, turnins, completes: st.completes, text: st.text.join(' '), isCurrent: isCurrentStep, upcoming: reachedCurrent && !past });
+        ch.steps.push({ index: st.num || 0, raw: i + 1, applies, optional: st.optional, past, accepts: items, turnins, completes: st.completes, collects: st.collects, gotos: st.gotos, mobs: st.mobs, text: st.text.join(' '), lines: st.text, isCurrent: isCurrentStep, upcoming: reachedCurrent && !past });
       });
       out.push(ch);
     }
     return { chapters: out, activeQuests: (charState.activeQuests || []).map((id) => rows[id] || { id, name: charState.questNames[id] || `Quest ${id}`, level: 0, zone: '', status: '' }) };
   }
 
-  const api = { bytesToBinaryString, luaUnescapeToBytes, inflateRawBrowser, parseAccountCache, parseCharacterFile, extractGuideBodies, parseGuide, filterApplies, chapterOrder, resolveNext, evaluate };
+  const api = { bytesToBinaryString, luaUnescapeToBytes, inflateRawBrowser, parseAccountCache, parseCharacterFile, extractGuideBodies, parseGuide, filterApplies, numberSteps, chapterOrder, resolveNext, evaluate };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.QC = Object.assign(root.QC || {}, { RXP: api });
 })(typeof window !== 'undefined' ? window : globalThis);

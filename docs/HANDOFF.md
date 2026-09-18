@@ -188,3 +188,7 @@ Copied from the play machine to `C:\Program Files (x86)\World of Warcraft\_class
 3. Per-character file (`Mankrik\Tuskcleaver\SavedVariables\RXPGuides.lua`) gives `currentGuideGroup/currentGuideName/currentStep` and `questObjectivesCache` (active quest log).
 
 Plan for the RXP panel: decompress cached guides for the character's faction → parse steps → for the current + upcoming guide chapters, evaluate each `.accept` against the engine's status; flag Blocked (name missing prereqs) and Completed (skippable); use the level-span filter to choose chapters.
+
+## 13. RestedXP step numbering (calibrated 2026-09-18 against the in-game window)
+A step is counted/visible in RestedXP when: its `<< class/race/faction` filter matches the player; its `#xprate` tag (if any) matches the server rate (Era = 1, so `#xprate >1.99` steps are hidden); and it is not a Season of Discovery phase step (`#season N` with N>0). Level-gated `.xp` steps and `#completewith`/`#optional` steps DO count. Implemented in `rxp.js numberSteps()`. Verified: 40-41 Stranglethorn Vale steps 18-26 match the screenshot exactly.
+`.complete <questId>,<objectiveIndex>` uses the game's objective index; Questie objectives are exported in quest-log order (creature, object, item, rep, killcredit, spell) as `quests[id].obj` in the snapshot. Objective names and quest-giver names always come from the snapshot (the local Lua reader only evaluates the quest DB).

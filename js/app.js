@@ -17,6 +17,7 @@
     analysis: null, report: null,
     f: { lo: 1, hi: 60, zone: '', cat: '', status: '', q: '', hideProf: false, hideEvents: true, wowColors: true },
     open: new Set(), showAllCompleted: false, sortKey: 'level', sortDir: 1,
+    lk: { chapter: '', step: 0, q: '', window: 12 },
   };
   try { const f = JSON.parse(localStorage.getItem('qc-filters') || 'null'); if (f) Object.assign(state.f, f); } catch (e) { /* ignore */ }
 
@@ -63,7 +64,12 @@
       status(pills.join(' '));
       try {
         const res = await QC.LocalDB.load(src.questieAddon, (msg) => { const p = $('#pill-db'); if (p) p.textContent = msg; });
-        if (res && res.db) { res.db.npcs = res.db.npcs || (window.QC_SNAPSHOT || {}).npcs; res.db.objects = res.db.objects || (window.QC_SNAPSHOT || {}).objects; state.db = res.db; state.dbInfo = { kind: 'local', label: `your installed Questie ${res.version || ''}`.trim(), date: '' }; }
+        if (res && res.db) {
+          const snap = window.QC_SNAPSHOT || { quests: {} };
+          res.db.npcs = res.db.npcs || snap.npcs; res.db.objects = res.db.objects || snap.objects;
+          // objective names (mob/item names) come from the snapshot; the local reader only evaluates the quest DB
+          for (const id of Object.keys(res.db.quests)) { const q = res.db.quests[id], sq = snap.quests[id]; if (q && sq && !q.obj && sq.obj) q.obj = sq.obj; }
+          state.db = res.db; state.dbInfo = { kind: 'local', label: `your installed Questie ${res.version || ''}`.trim(), date: '' }; }
         const p = $('#pill-db'); if (p) { p.textContent = res && res.db ? `Quest data: your installed Questie ${res.version || ''}` : `Installed Questie not readable. Using bundled snapshot`; p.className = 'pill ' + (res && res.db ? 'ok' : 'warn'); }
       } catch (e) {
         const p = $('#pill-db'); if (p) { p.textContent = 'Installed Questie not readable. Using bundled snapshot'; p.className = 'pill warn'; }
@@ -250,6 +256,14 @@
     $('#f-prof').onchange = (e) => { state.f.hideProf = e.target.checked; render(); };
     $('#f-events').onchange = (e) => { state.f.hideEvents = e.target.checked; render(); };
     $('#f-colors').onchange = (e) => { state.f.wowColors = e.target.checked; render(); };
+    if ($('#lk-chapter')) {
+      $('#lk-chapter').onchange = (e) => { state.lk.chapter = e.target.value; state.lk.step = 1; state.lk.q = ''; render(); scrollLookup(); };
+      $('#lk-step').onchange = (e) => { state.lk.step = +e.target.value || 1; state.lk.q = ''; render(); scrollLookup(); };
+      $('#lk-prev').onclick = () => { state.lk.step = Math.max(1, (state.lk.step || 1) - state.lk.window); state.lk.q = ''; render(); scrollLookup(); };
+      $('#lk-next').onclick = () => { state.lk.step = (state.lk.step || 1) + state.lk.window; state.lk.q = ''; render(); scrollLookup(); };
+      const here = $('#lk-here'); if (here) here.onclick = () => { const cs = state.rxp.charState; state.lk.chapter = cs.currentGuideName; state.lk.step = cs.currentStep || 1; state.lk.q = ''; render(); scrollLookup(); };
+      let lt; $('#lk-q').oninput = (e) => { clearTimeout(lt); const v = e.target.value; lt = setTimeout(() => { state.lk.q = v; render(); const el = $('#lk-q'); el.focus(); el.setSelectionRange(v.length, v.length); scrollLookup(); }, 250); };
+    }
     let t; $('#f-q').oninput = (e) => { clearTimeout(t); const v = e.target.value; t = setTimeout(() => { state.f.q = v; render(); const el = $('#f-q'); el.focus(); el.setSelectionRange(v.length, v.length); }, 250); };
   }
   function tile(n, label, kind, target) { return `<a class="tile ${kind}" href="#${target}"><div class="n">${n}</div><div class="l">${esc(label)}</div></a>`; }
@@ -369,7 +383,7 @@
   function renderRxp() {
     const ev = state.rxp.evaluation; const cs = state.rxp.charState || {};
     if (!ev || !ev.chapters.length) return '<div class="empty">No RestedXP guide chapters could be read for this character.</div>';
-    let html = `<div class="notice" style="margin-bottom:12px">You are on <b>${esc(cs.currentGuideGroup || '')}</b> › <b>${esc(cs.currentGuideName || '?')}</b>, step ${cs.currentStep || '?'}. ${ev.activeQuests.length} quest${ev.activeQuests.length === 1 ? '' : 's'} in your log. Chapters below follow the guide’s own order from where you are.</div>`;
+    let html = renderLookup(ev, cs) + `<h3 style="margin:18px 0 8px;font-size:15px">Problems ahead</h3>` + `<div class="notice" style="margin-bottom:12px">You are on <b>${esc(cs.currentGuideGroup || '')}</b> › <b>${esc(cs.currentGuideName || '?')}</b>, step ${cs.currentStep || '?'}. ${ev.activeQuests.length} quest${ev.activeQuests.length === 1 ? '' : 's'} in your log. Chapters below follow the guide’s own order from where you are.</div>`;
     const seen = new Set();
     for (const ch of ev.chapters) {
       if (!chapterInSpan(ch)) continue;
@@ -428,6 +442,70 @@
     </tbody></table>${rows.length > limit ? `<div class="more"><a href="#" data-toggle="all-more">Show all ${rows.length} rows</a></div>` : ''}`;
   }
 
+
+  /* ---------- RestedXP step lookup ---------- */
+  function qlabel(r, id) {
+    if (!r) return `<span style="color:var(--text-3)">unknown quest #${id}</span>`;
+    const dc = state.f.wowColors ? ` class="diff-${r.difficulty}"` : '';
+    return `<a${dc} href="${wh(r.id)}" target="_blank" rel="noopener"><b>${esc(r.name)}</b></a> <small style="color:var(--text-3)">lvl ${r.level}${r.xp && !r.done ? ` · ${r.xp.toLocaleString()} XP` : ''}</small> ${statusTag(r)}`;
+  }
+  function objectiveLabel(r, idx) {
+    if (!r || !r.objectives.length) return '';
+    const list = r.objectives.map((o, i) => {
+      const n = o.t || o.n || (o.k === 'rep' ? 'reputation' : o.k === 'spell' ? 'cast a spell' : `#${o.id}`);
+      const verb = o.k === 'npc' || o.k === 'kill' ? 'kill' : o.k === 'item' ? 'collect' : o.k === 'obj' ? 'use' : '';
+      const hit = idx && i + 1 === idx;
+      return `<span class="objv ${hit ? 'hit' : ''}">${i + 1}. ${verb ? verb + ' ' : ''}${esc(n)}</span>`;
+    });
+    return `<span class="objs">${list.join(' ')}</span>`;
+  }
+  function renderLookup(ev, cs) {
+    const rows = state.analysis.rows;
+    const chapters = ev.chapters;
+    if (!state.lk.chapter || !chapters.some((c) => c.guide.name === state.lk.chapter)) { const cur = chapters.find((c) => c.isCurrent) || chapters[0]; state.lk.chapter = cur.guide.name; state.lk.step = cur.isCurrent ? (cs.currentStep || 1) : 1; }
+    const ch = chapters.find((c) => c.guide.name === state.lk.chapter);
+    const visible = ch.steps.filter((s) => s.index > 0);
+    const total = visible.length;
+    let start = Math.max(1, Math.min(state.lk.step || 1, total));
+    const q = state.lk.q.trim().toLowerCase();
+    let shown;
+    if (q) {
+      shown = [];
+      for (const c of chapters) for (const s of c.steps) {
+        if (!s.index) continue;
+        const hay = [s.text, ...s.accepts.map((a) => a.name), ...s.turnins.map((t) => t.name), ...s.completes.map((x) => rows[x.id] ? rows[x.id].name : ''), ...s.mobs].join(' ').toLowerCase();
+        if (hay.includes(q)) shown.push({ s, c });
+        if (shown.length >= 40) break;
+      }
+    } else {
+      shown = visible.filter((s) => s.index >= start && s.index < start + state.lk.window).map((s) => ({ s, c: ch }));
+    }
+    const stepHtml = ({ s, c }) => {
+      const parts = [];
+      for (const a of s.accepts) parts.push(`<div class="lk-line"><span class="lk-k">Accept</span>${qlabel(a.row, a.id)}${a.issue === 'blocked' || a.issue === 'cascade' ? ` <span class="tag bad">needs ${esc(a.missing.map((sl) => sl.map((o) => o.name).join(' or ')).join('; '))}</span>` : ''}</div>`);
+      for (const t of s.turnins) parts.push(`<div class="lk-line"><span class="lk-k">Turn in</span>${qlabel(t.row, t.id)}${t.issue === 'noquest' ? ' <span class="tag bad">you do not have this quest</span>' : ''}</div>`);
+      for (const x of s.completes) { const r = rows[x.id]; parts.push(`<div class="lk-line"><span class="lk-k">Working on</span>${qlabel(r, x.id)}${x.obj ? ` <span class="lk-obj">objective ${x.obj}${r && r.objectives[x.obj - 1] ? ': ' + esc(r.objectives[x.obj - 1].t || r.objectives[x.obj - 1].n || '') : ''}</span>` : ''}${r && r.objectives.length > 1 ? `<div class="lk-objs">${objectiveLabel(r, x.obj)}</div>` : ''}</div>`); }
+      for (const cl of s.collects) { const r = rows[cl.quest]; parts.push(`<div class="lk-line"><span class="lk-k">Collect</span>${cl.count} × ${esc(cl.text.replace(/^Collect\s*/i, '') || 'item #' + cl.item)}${r ? ` <small style="color:var(--text-3)">for</small> ${qlabel(r, cl.quest)}` : ''}</div>`); }
+      const where = s.gotos.length ? `<div class="lk-where">${esc(s.gotos[0].zone)} ${s.gotos[0].x.toFixed(1)}, ${s.gotos[0].y.toFixed(1)}${s.mobs.length ? ' · ' + esc(s.mobs.slice(0, 3).join(', ')) : ''}</div>` : (s.mobs.length ? `<div class="lk-where">${esc(s.mobs.slice(0, 3).join(', '))}</div>` : '');
+      return `<div class="lk-step ${s.isCurrent ? 'cur' : ''} ${s.past ? 'past' : ''}">
+        <div class="lk-num">${s.index}${q && c !== ch ? `<small>${esc(c.guide.name)}</small>` : ''}${s.isCurrent ? '<small class="you">you are here</small>' : ''}</div>
+        <div><div class="lk-text">${s.lines.map(esc).join('<br>') || '<i style="color:var(--text-3)">(no instruction text)</i>'}${s.optional ? ' <span class="tag">optional</span>' : ''}</div>${parts.join('')}${where}</div>
+      </div>`;
+    };
+    return `<div class="lookup">
+      <div class="lk-bar">
+        <span class="lk-title">Guide step lookup</span>
+        <select id="lk-chapter">${chapters.map((c) => `<option ${c.guide.name === state.lk.chapter ? 'selected' : ''}>${esc(c.guide.name)}</option>`).join('')}</select>
+        <span class="lk-stepctl"><button class="iconbtn" id="lk-prev" title="Earlier steps">◂</button><label>Step <input type="number" id="lk-step" min="1" max="${total}" value="${start}"> <span style="color:var(--text-3)">of ${total}</span></label><button class="iconbtn" id="lk-next" title="Later steps">▸</button></span>
+        <input type="search" id="lk-q" placeholder="Search step text, quest or mob…" value="${esc(state.lk.q)}">
+        ${cs.currentGuideName ? `<button class="iconbtn" id="lk-here" title="Jump to your current RestedXP step">⌖ Where am I</button>` : ''}
+      </div>
+      <div class="lk-hint">Step numbers match the RestedXP window for your class, race and faction. Names shown in the game window without a quest are resolved here, with the quest and objective they belong to.</div>
+      <div class="lk-list">${shown.length ? shown.map(stepHtml).join('') : '<div class="empty">No matching steps.</div>'}</div>
+    </div>`;
+  }
+
+  function scrollLookup() { const el = document.querySelector('.lookup'); if (el) el.scrollIntoView({ block: 'start' }); }
   /* ---------- events ---------- */
   function onDocClick(e) {
     const t = e.target.closest('[data-toggle]');

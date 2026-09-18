@@ -16,7 +16,8 @@ NEEDED = [
     "Database/QuestieDB.lua", "Database/Constants.lua", "Database/Classic/classicQuestDB.lua",
     "Database/Corrections/classicQuestFixes.lua", "Database/Corrections/QuestieQuestBlacklist.lua",
     "Localization/lookups/lookupZones.lua", "Modules/Expansions.lua",
-    "Database/Classic/classicNpcDB.lua", "Database/Classic/classicObjectDB.lua", "Database/QuestXP/DB/xpDB-classic.lua",
+    "Database/Classic/classicNpcDB.lua", "Database/Classic/classicObjectDB.lua", "Database/Classic/classicItemDB.lua",
+    "Database/QuestXP/DB/xpDB-classic.lua",
 ]
 SPARSE_DIRS = ["Database", "Localization/lookups", "Modules"]
 
@@ -77,6 +78,7 @@ def extract(root):
     run("Database/Corrections/QuestieQuestBlacklist.lua")
     run("Database/Classic/classicNpcDB.lua")
     run("Database/Classic/classicObjectDB.lua")
+    run("Database/Classic/classicItemDB.lua")
     run("Database/QuestXP/DB/xpDB-classic.lua")
     lua.execute(r"""
         local QDB = QuestieLoader:ImportModule("QuestieDB")
@@ -91,6 +93,7 @@ def extract(root):
         if ok then for id, v in pairs(bl) do if v == true then BLACKLIST[id] = true end end end
         NPCS = load(QDB.npcData)()
         OBJECTS = load(QDB.objectData)()
+        ITEMS = load(QDB.itemData)()
         XP = QuestieLoader:ImportModule("QuestXP").db or {}
     """)
     keys = dict(lua.eval("QuestieLoader:ImportModule('QuestieDB').questKeys").items())
@@ -117,8 +120,41 @@ def extract(root):
                 if ids: out[key] = ids
         return out or None
     quests = {}
-    npc_ids, obj_ids = set(), set()
+    npc_ids, obj_ids, item_ids = set(), set(), set()
     XP = lua.eval("XP")
+    NPCS, OBJECTS, ITEMS = lua.eval("NPCS"), lua.eval("OBJECTS"), lua.eval("ITEMS")
+    def nm(tbl, i):
+        r = tbl[i]
+        return r[1] if r is not None else None
+    def objectives(tbl):
+        """Questie objectives table {creature, object, item, reputation, killcredit, spell} -> ordered list
+        [{k, id, n(name), t(custom text)}] in quest-log order (creature, object, item, then the rest)."""
+        if tbl is None: return None
+        out = []
+        for idx, kind, names in ((1, "npc", NPCS), (2, "obj", OBJECTS), (3, "item", ITEMS)):
+            grp = tbl[idx]
+            if grp is None: continue
+            for _, ent in sorted(grp.items()):
+                if ent is None: continue
+                i = ent[1]; txt = ent[2] if isinstance(ent[2], str) else None
+                if not isinstance(i, (int, float)): continue
+                out.append({"k": kind, "id": int(i), "n": nm(names, int(i)), **({"t": txt} if txt else {})})
+        rep = tbl[4]
+        if rep is not None and rep[1] is not None: out.append({"k": "rep", "id": int(rep[1]), "n": None, "v": int(rep[2] or 0)})
+        kc = tbl[5]
+        if kc is not None:
+            for _, ent in sorted(kc.items()):
+                if ent is None: continue
+                txt = ent[3] if isinstance(ent[3], str) else None
+                base = ent[2] if isinstance(ent[2], (int, float)) else None
+                out.append({"k": "kill", "id": int(base) if base else 0, "n": (nm(NPCS, int(base)) if base else None), **({"t": txt} if txt else {})})
+        sp = tbl[6]
+        if sp is not None:
+            for _, ent in sorted(sp.items()):
+                if ent is None: continue
+                txt = ent[2] if isinstance(ent[2], str) else None
+                out.append({"k": "spell", "id": int(ent[1] or 0), "n": None, **({"t": txt} if txt else {})})
+        return out or None
     for qid, row in lua.eval("QUESTS").items():
         d = {}
         for name in wanted:
@@ -130,8 +166,9 @@ def extract(root):
         if fi: d["finish"] = fi; npc_ids.update(fi.get("npc", [])); obj_ids.update(fi.get("obj", []))
         x = XP[int(qid)]
         if x is not None and x[1] and x[2] and x[1] > 0 and x[2] > 0: d["xp"] = [int(x[1]), int(x[2])]
+        ob = objectives(row[keys["objectives"]])
+        if ob: d["obj"] = ob
         quests[str(int(qid))] = d
-    NPCS, OBJECTS = lua.eval("NPCS"), lua.eval("OBJECTS")
     npcs = {}
     for i in sorted(npc_ids):
         n = NPCS[i]

@@ -257,6 +257,7 @@
         missedReason: st === STATUS.MISSED ? missedReason(id, q) : '',
         next: Q[q.nextQuestInChain] ? q.nextQuestInChain : null,
         objective: (q.objectivesText && q.objectivesText[0]) || '',
+        objectives: q.obj || [],
         repeatable: !!((q.specialFlags || 0) & 1),
         dungeon: dungeonZoneIds.get(q.zoneOrSort) || null,
         unlocks: Array.from(unlocks[id] || []).filter((u) => ELIG.has(u)),
