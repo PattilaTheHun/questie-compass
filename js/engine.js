@@ -400,10 +400,10 @@
       const dur = starter('Durotar') + starter('Valley of Trials');
       if (starter('Mulgore') > dur && starter('Mulgore') > starter('Tirisfal Glades')) raceBit = RACES.TAUREN;
       else if (starter('Tirisfal Glades') > dur) raceBit = RACES.UNDEAD;
-      else { raceBit = RACES.ORC; raceNote = 'Orc or Troll — both start in Durotar; pick yours.'; }
+      else { raceBit = RACES.ORC; raceNote = 'Orc or Troll? Both start in Durotar; pick yours.'; }
     } else if (faction === 'Alliance') {
       if (starter('Teldrassil') > starter('Elwynn Forest') && starter('Teldrassil') > starter('Dun Morogh')) raceBit = RACES.NIGHT_ELF;
-      else if (starter('Dun Morogh') > starter('Elwynn Forest')) { raceBit = RACES.DWARF; raceNote = 'Dwarf or Gnome — both start in Dun Morogh; pick yours.'; }
+      else if (starter('Dun Morogh') > starter('Elwynn Forest')) { raceBit = RACES.DWARF; raceNote = 'Dwarf or Gnome? Both start in Dun Morogh; pick yours.'; }
       else raceBit = RACES.HUMAN;
     }
     return { faction, raceBit, raceNote, level: maxLvl };

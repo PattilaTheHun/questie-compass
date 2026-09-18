@@ -52,18 +52,18 @@
     pills.push(`<span class="pill ${src.rxpAccount.length ? 'purple' : ''}">${src.rxpAccount.length ? 'RestedXP data found' : 'No RestedXP data'}</span>`);
     // Local Questie DB
     if (src.questieAddon.present && src.questieAddon.files.questDB && window.QC.LocalDB) {
-      pills.push(`<span class="pill info" id="pill-db">Installed Questie found — reading its quest database…</span>`);
+      pills.push(`<span class="pill info" id="pill-db">Installed Questie found. Reading its quest database…</span>`);
       status(pills.join(' '));
       try {
         const res = await QC.LocalDB.load(src.questieAddon, (msg) => { const p = $('#pill-db'); if (p) p.textContent = msg; });
         if (res && res.db) { state.db = res.db; state.dbInfo = { kind: 'local', label: `your installed Questie ${res.version || ''}`.trim(), date: '' }; }
-        const p = $('#pill-db'); if (p) { p.textContent = res && res.db ? `Quest data: your installed Questie ${res.version || ''}` : `Installed Questie not readable — using bundled snapshot`; p.className = 'pill ' + (res && res.db ? 'ok' : 'warn'); }
+        const p = $('#pill-db'); if (p) { p.textContent = res && res.db ? `Quest data: your installed Questie ${res.version || ''}` : `Installed Questie not readable. Using bundled snapshot`; p.className = 'pill ' + (res && res.db ? 'ok' : 'warn'); }
       } catch (e) {
-        const p = $('#pill-db'); if (p) { p.textContent = 'Installed Questie not readable — using bundled snapshot'; p.className = 'pill warn'; }
+        const p = $('#pill-db'); if (p) { p.textContent = 'Installed Questie not readable. Using bundled snapshot'; p.className = 'pill warn'; }
         console.warn('Local Questie DB failed', e);
       }
     } else if (src.questieAddon.present && src.questieAddon.newLayout) {
-      pills.push(`<span class="pill warn">Installed Questie uses a newer database layout — using bundled snapshot</span>`);
+      pills.push(`<span class="pill warn">Installed Questie uses a newer database layout. Using bundled snapshot</span>`);
     } else {
       pills.push(`<span class="pill">Quest data: ${esc(state.dbInfo.label)}${state.dbInfo.date ? ' · ' + esc(state.dbInfo.date) : ''}</span>`);
     }
@@ -74,7 +74,7 @@
 
   function renderCharSetup() {
     const box = $('#charsetup'); box.classList.remove('hidden');
-    const opts = state.chars.map((c, i) => `<option value="${i}">${esc(c.key)} — ${esc(titleCase(c.class))} · ${c.completed.length} quests done${state.chars.length > 1 && state.source.questieLua.length > 1 ? ` · ${esc(c.account)}` : ''}</option>`).join('');
+    const opts = state.chars.map((c, i) => `<option value="${i}">${esc(c.key)} · ${esc(titleCase(c.class))} · ${c.completed.length} quests done${state.chars.length > 1 && state.source.questieLua.length > 1 ? ` · ${esc(c.account)}` : ''}</option>`).join('');
     box.innerHTML = `
       <div class="setup-grid">
         <div class="field"><label>Character</label><select id="sel-char">${opts}</select><div class="hint" id="char-hint"></div></div>
@@ -100,7 +100,7 @@
     const rxpAcct = state.source.rxpAccount.find((r) => r.account === c.account) || state.source.rxpAccount[0];
     state.rxp.available = !!(rxpAcct && rxpChar); $('#chk-rxp').disabled = !state.rxp.available; $('#chk-rxp').checked = state.rxp.available;
     $('#rxp-label').textContent = state.rxp.available ? 'Include RestedXP guide analysis' : 'RestedXP data not found for this character';
-    $('#inp-level').value = inf.level; $('#level-hint').textContent = `Estimated from your completed quests — correct it if needed.`;
+    $('#inp-level').value = inf.level; $('#level-hint').textContent = `Estimated from your completed quests. Correct it if needed.`;
     if (rxpChar) {
       FS.readText(rxpChar.file).then((t) => {
         const cs = RXP.parseCharacterFile(t); state.rxp.charState = cs;
@@ -109,7 +109,7 @@
       });
     }
     const ageDays = Math.round((Date.now() - c.fileDate) / 864e5);
-    $('#char-hint').textContent = c.fileDate ? `Questie.lua last written ${ageDays === 0 ? 'today' : ageDays + ' day' + (ageDays === 1 ? '' : 's') + ' ago'}${ageDays > 1 ? ' — log out or /reload in game for fresh data' : ''}.` : '';
+    $('#char-hint').textContent = c.fileDate ? `Questie.lua last written ${ageDays === 0 ? 'today' : ageDays + ' day' + (ageDays === 1 ? '' : 's') + ' ago'}${ageDays > 1 ? '. Log out or /reload in game for fresh data' : ''}.` : '';
   }
   function fillRaces(preferBit) {
     const fac = $('#sel-faction').value; const list = fac === 'Horde' ? HORDE : ALLIANCE;
@@ -223,16 +223,16 @@
         <a href="#sec-all">All quests</a>
       </nav>
 
-      ${section('sec-catchup', 'Do these first', `Quests you skipped that gate ${spanLabel} content — ranked by how much they unlock`, renderCatchUp(catchUp, R))}
-      ${section('sec-coming', 'Coming up', `What you can pick up in ${spanLabel} — grouped by zone`, renderComing(inLog, ready, later, needsRep))}
-      ${section('sec-blocked', 'Blocked', `${spanLabel} quests waiting on something you haven’t done — expand one to see the full path`, renderBlocked(blocked))}
+      ${section('sec-catchup', 'Do these first', `Quests you skipped that gate ${spanLabel} content, ranked by how much they unlock`, renderCatchUp(catchUp, R))}
+      ${section('sec-coming', 'Coming up', `What you can pick up in ${spanLabel}, grouped by zone`, renderComing(inLog, ready, later, needsRep))}
+      ${section('sec-blocked', 'Blocked', `${spanLabel} quests waiting on something you haven’t done. Expand one to see the full path`, renderBlocked(blocked))}
       ${section('sec-lines', 'Questlines', 'Chains touching this level range. Gold = your next step, green = done, purple = in your log, red outline = blocked', renderLines(lines))}
       ${section('sec-zones', 'Zone completion', `How much of each zone’s ${spanLabel} content you have done`, renderZones(R.zones))}
-      ${section('sec-dungeons', 'Dungeon prep', 'Collect these before you run — grouped by what you can take now', renderDungeons(R.dungeons))}
+      ${section('sec-dungeons', 'Dungeon prep', 'Collect these before you run, grouped by what you can take now', renderDungeons(R.dungeons))}
       ${state.rxp.enabled ? section('sec-rxp', 'RestedXP guide check', 'Upcoming guide steps that will not work as written, and why', renderRxp()) : ''}
-      ${section('sec-missed', 'Missed / unavailable', 'Not a loss — just noise removed. Usually because you completed a mutually exclusive alternative', renderSimple(missed, (r) => r.missedReason))}
+      ${section('sec-missed', 'Missed / unavailable', 'Not a loss, just noise removed. Usually because you completed a mutually exclusive alternative', renderSimple(missed, (r) => r.missedReason))}
       ${section('sec-done', 'Completed', `${R.totals.completedKnown} quests Questie has recorded as turned in`, renderCompleted(R.completed))}
-      ${section('sec-all', 'All quests in range', 'Everything your character can see in this level range — click a column to sort', renderAll(R))}
+      ${section('sec-all', 'All quests in range', 'Everything your character can see in this level range. Click a column to sort', renderAll(R))}
     `;
     // wire filters
     rep.querySelectorAll('[data-span]').forEach((b) => { b.onclick = () => { const [lo, hi] = b.dataset.span.split('-').map(Number); state.f.lo = lo; state.f.hi = hi; render(); }; });
@@ -272,7 +272,7 @@
   function zoneGroups(rows, rowFn, sortInZone) { return groupByZone(rows).map(([z, rs]) => { if (sortInZone) rs = rs.slice().sort(sortInZone); return `<div class="zone-h"><h3>${esc(z)}</h3><span class="c">${rs.length}</span></div><ul class="qlist">${rs.map(rowFn).join('')}</ul>`; }).join(''); }
 
   function renderCatchUp(list, R) {
-    if (!list.length) return `<div class="empty">Nothing to catch up on in this range — every blocked quest here is waiting on other ${R.lo}–${R.hi} quests, not on something you skipped.</div>`;
+    if (!list.length) return `<div class="empty">Nothing to catch up on in this range. Every blocked quest here is waiting on other ${R.lo}–${R.hi} quests, not on something you skipped.</div>`;
     const lower = list.filter((c) => c.skippedLower), same = list.filter((c) => !c.skippedLower);
     const row = (c) => qrow(c,
       `<span class="tag warn">unlocks ${c.gatesCount} quest${c.gatesCount === 1 ? '' : 's'} here${c.unlocksTotal > c.gatesCount ? ` · ${c.unlocksTotal} overall` : ''}</span>${c.skippedLower ? '<span class="tag bad">skipped lower-level</span>' : ''}<span class="tag">${esc(c.chainRole)}</span>`,
@@ -280,8 +280,8 @@
       `<div class="lbl">Unlocks</div><ul>${c.gates.map((g) => `<li><a href="${wh(g.id)}" target="_blank" rel="noopener">${esc(g.name)}</a> <small style="color:var(--text-3)">lvl ${g.level} · ${esc(g.zone)}</small></li>`).join('')}</ul>${prereqDetail(c)}`,
       { keyPrefix: 'cu' });
     let html = '';
-    if (lower.length) html += `<div class="notice warn" style="margin-bottom:12px"><b>${lower.length}</b> lower-level quest${lower.length === 1 ? '' : 's'} you skipped ${lower.length === 1 ? 'is' : 'are'} blocking content in this range. Do these on your way — they are the real catch-up list.</div>` + zoneGroups(lower, row, (a, b) => a.level - b.level || a.name.localeCompare(b.name));
-    if (same.length) html += `<div class="zone-h" style="margin-top:22px"><h3 style="color:var(--text-2)">Also required — chains in this range you have not started</h3><span class="c">${same.length}</span></div><ul class="qlist">${same.slice(0, state.open.has('cu-more') ? 9999 : 25).map(row).join('')}</ul>${same.length > 25 && !state.open.has('cu-more') ? `<div class="more"><a href="#" data-toggle="cu-more">Show all ${same.length}</a></div>` : ''}`;
+    if (lower.length) html += `<div class="notice warn" style="margin-bottom:12px"><b>${lower.length}</b> lower-level quest${lower.length === 1 ? '' : 's'} you skipped ${lower.length === 1 ? 'is' : 'are'} blocking content in this range. Do these on your way; they are the real catch-up list.</div>` + zoneGroups(lower, row, (a, b) => a.level - b.level || a.name.localeCompare(b.name));
+    if (same.length) html += `<div class="zone-h" style="margin-top:22px"><h3 style="color:var(--text-2)">Also required: chains in this range you have not started</h3><span class="c">${same.length}</span></div><ul class="qlist">${same.slice(0, state.open.has('cu-more') ? 9999 : 25).map(row).join('')}</ul>${same.length > 25 && !state.open.has('cu-more') ? `<div class="more"><a href="#" data-toggle="cu-more">Show all ${same.length}</a></div>` : ''}`;
     return html;
   }
   function renderComing(inLog, ready, later, needsRep) {
@@ -317,7 +317,7 @@
     const started = lines.filter((l) => l.started), fresh = lines.filter((l) => !l.started && !l.complete), completeL = lines.filter((l) => l.complete);
     const one = (l) => `<div class="ql">
       <div class="ql-h"><b>${esc(l.name)}</b><span class="c">${l.done}/${l.total} done · up to lvl ${l.maxLevel}</span>${l.stalled ? '<span class="tag warn">stalled below this range</span>' : ''}${l.nextStep ? `<span class="tag ok">next: ${esc(l.nextStep.name)}</span>` : ''}</div>
-      <div class="stepper">${l.steps.map((r, i) => `<div class="st ${cls(r)}" title="${esc(r.name)} — ${esc(r.status)} (lvl ${r.level})">${i ? '<span class="bar"></span>' : ''}<span class="dot"></span><span class="lab"><span><a href="${wh(r.id)}" target="_blank" rel="noopener" style="color:inherit">${esc(r.name)}</a></span><em>${r.level}${r.zone && r.zone !== l.steps[0].zone ? ' · ' + esc(r.zone) : ''}</em></span></div>`).join('')}</div>
+      <div class="stepper">${l.steps.map((r, i) => `<div class="st ${cls(r)}" title="${esc(r.name)}: ${esc(r.status)} (lvl ${r.level})">${i ? '<span class="bar"></span>' : ''}<span class="dot"></span><span class="lab"><span><a href="${wh(r.id)}" target="_blank" rel="noopener" style="color:inherit">${esc(r.name)}</a></span><em>${r.level}${r.zone && r.zone !== l.steps[0].zone ? ' · ' + esc(r.zone) : ''}</em></span></div>`).join('')}</div>
     </div>`;
     let html = '';
     if (started.length) html += `<div class="zone-h"><h3>In progress</h3><span class="c">${started.length}</span></div>${started.map(one).join('')}`;
@@ -385,10 +385,10 @@
       const one = (it) => {
         const r = it.q.row; const link = r ? `<a href="${wh(r.id)}" target="_blank" rel="noopener">${esc(r.name)}</a>` : esc(it.q.name);
         let fix = '';
-        if (it.kind === 'blocked') fix = `Guide accepts <b>${link}</b> but you are missing: ${it.q.missing.map((slot) => slot.map((o) => `<a href="${wh(o.id)}" target="_blank" rel="noopener">${esc(o.name)}</a> <small>(lvl ${o.level || '?'})</small>`).join(' <i>or</i> ')).join('; ')}. Do that first — ideally before you reach step ${it.st.index}.`;
-        else if (it.kind === 'noquest') fix = `Guide turns in <b>${link}</b> but you never picked it up${r && r.status === QC.STATUS.BLOCKED ? ` — and it is blocked: needs ${esc(r.prereqs.filter((p) => !p.met).map((p) => p.options.map((o) => o.name).join(' or ')).join('; '))}` : r && r.status === QC.STATUS.READY ? ' — it is available now; grab it from an earlier chapter’s quest giver' : ''}.`;
+        if (it.kind === 'blocked') fix = `Guide accepts <b>${link}</b> but you are missing: ${it.q.missing.map((slot) => slot.map((o) => `<a href="${wh(o.id)}" target="_blank" rel="noopener">${esc(o.name)}</a> <small>(lvl ${o.level || '?'})</small>`).join(' <i>or</i> ')).join('; ')}. Do that first, ideally before you reach step ${it.st.index}.`;
+        else if (it.kind === 'noquest') fix = `Guide turns in <b>${link}</b> but you never picked it up${r && r.status === QC.STATUS.BLOCKED ? ` (and it is blocked: needs ${esc(r.prereqs.filter((p) => !p.met).map((p) => p.options.map((o) => o.name).join(' or ')).join('; '))})` : r && r.status === QC.STATUS.READY ? ' (it is available now; grab it from an earlier chapter’s quest giver)' : ''}.`;
         else if (it.kind === 'missed') fix = `Guide accepts <b>${link}</b> but it is no longer available to you: ${esc(r.missedReason)}.`;
-        else if (it.kind === 'done') fix = `<b>${link}</b> — already completed; skip this step.`;
+        else if (it.kind === 'done') fix = `<b>${link}</b>: already completed, skip this step.`;
         return `<div class="rxp-item"><div class="stp">step ${it.st.index}${it.st.optional ? ' (opt)' : ''}</div><div><span class="tag ${it.kind === 'done' ? 'ok' : it.kind === 'missed' ? '' : 'bad'}">${it.kind === 'noquest' ? 'missing quest' : it.kind}</span> <div class="fix">${fix}</div></div></div>`;
       };
       html += bad.map(one).join('');
