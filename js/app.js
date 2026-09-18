@@ -30,12 +30,10 @@
     $('#btn-restart').onclick = () => location.reload();
 
     if (FS.supportsFSA) {
-      $('#lbl-dir').classList.add('hidden');
+      $('#btn-pick').classList.remove('hidden');
       $('#btn-pick').onclick = pickFolderFSA;
+      $('#pick-hint2').innerHTML = 'Chrome and Edge can also <b>remember</b> the folder for one-click refreshes — but they refuse folders under <code>Program Files</code> (“contains system files”). If WoW lives elsewhere, use “Choose &amp; remember folder”.';
       FS.loadHandle().then((h) => { if (h) { const b = $('#btn-reuse'); b.textContent = `↻ Re-read “${h.name}”`; b.classList.remove('hidden'); b.onclick = () => reuseHandle(h); $('#btn-forget').classList.remove('hidden'); $('#btn-forget').onclick = async () => { await FS.forgetHandle(); b.classList.add('hidden'); $('#btn-forget').classList.add('hidden'); }; } });
-    } else {
-      $('#btn-pick').classList.add('hidden');
-      $('#pick-hint').textContent = 'Your browser will ask you to choose the folder each visit (Chrome and Edge can remember it).';
     }
     $('#inp-dir').onchange = (e) => { if (e.target.files.length) onSource(FS.scanFileList(e.target.files)); };
     $('#inp-lua').onchange = (e) => { const f = e.target.files[0]; if (f) onSource({ flavor: '', questieLua: [{ account: 'chosen file', file: f }], rxpAccount: [], rxpChar: [], questieAddon: { present: false, files: {} , tocs: [] }, rxpAddon: { present: false, guideFiles: [] } }); };
@@ -44,7 +42,8 @@
 
   async function pickFolderFSA() {
     let handle;
-    try { handle = await window.showDirectoryPicker({ id: 'wow-folder', mode: 'read' }); } catch (e) { return; }
+    try { handle = await window.showDirectoryPicker({ id: 'wow-folder', mode: 'read' }); }
+    catch (e) { status('Folder not opened. If Chrome said the folder “contains system files”, that is its rule for anything under Program Files — use <b>📁 Choose WoW folder</b> instead, which works for any location.', 'warn'); return; }
     await useHandle(handle);
   }
   async function reuseHandle(handle) {

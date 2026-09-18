@@ -115,16 +115,22 @@
   /* ---- FileList (webkitdirectory) walking ---- */
   function scanFileList(fileList) {
     const files = Array.from(fileList);
-    // Normalize paths; find the flavor folder segment
     const norm = files.map((f) => ({ f, p: (f.webkitRelativePath || f.name).replace(/\\/g, '/') }));
     let flavorName = '';
     for (const { p } of norm) { const seg = p.split('/'); const hit = seg.find((s) => FLAVORS.includes(s)); if (hit) { flavorName = hit; break; } }
     const rootName = norm.length ? norm[0].p.split('/')[0] : '';
     const src = emptySource(flavorName || rootName);
-    const rel = (p) => { const seg = p.split('/'); const i = flavorName ? seg.indexOf(flavorName) : 0; return seg.slice(i + (flavorName ? 1 : 1)).join('/'); };
+    // Anchor each path at the WTF or Interface folder so the user may pick the WoW root, a flavor folder, or just WTF.
+    const rel = (p) => {
+      const seg = p.split('/');
+      let i = seg.findIndex((s, idx) => (s === 'WTF' || s === 'Interface') && idx < seg.length - 1);
+      if (i < 0) return null;
+      if (rootName === 'WTF' && i === 0) return seg.join('/');
+      return seg.slice(i).join('/');
+    };
     for (const { f, p } of norm) {
-      const r = rel(p); const seg = r.split('/');
-      if (seg[0] === 'WTF' && seg[1] === 'Account' && seg.length >= 4) {
+      const r = rel(p); if (!r) continue; const seg = r.split('/');
+      if (seg[0] === 'WTF' && seg[1] === 'Account' && seg.length >= 5) {
         const account = seg[2];
         if (seg[3] === 'SavedVariables' && seg.length === 5) {
           if (seg[4] === 'Questie.lua') src.questieLua.push({ account, file: f });

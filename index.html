@@ -34,16 +34,17 @@
         <li><b>Pick your character</b>, confirm level and race, and explore.</li>
       </ol>
       <div class="btn-row" style="margin-top:16px">
-        <button class="btn primary" id="btn-pick">📁 Choose WoW folder</button>
+        <label class="btn primary" for="inp-dir" id="lbl-dir">📁 Choose WoW folder</label>
+        <input class="sr" type="file" id="inp-dir" webkitdirectory directory multiple>
         <button class="btn hidden" id="btn-reuse"></button>
         <button class="btn hidden" id="btn-forget" title="Forget the remembered folder">Forget</button>
-        <label class="btn" for="inp-dir" id="lbl-dir">📁 Choose WoW folder</label>
-        <input class="sr" type="file" id="inp-dir" webkitdirectory directory multiple>
         <span class="sub" style="color:var(--text-3);font-size:13px">or</span>
         <label class="btn" for="inp-lua">Just pick a Questie.lua</label>
         <input class="sr" type="file" id="inp-lua" accept=".lua">
+        <button class="btn hidden" id="btn-pick" title="Chrome/Edge only. Does not work for folders under Program Files.">🔖 Choose &amp; remember folder</button>
       </div>
-      <p class="hint" id="pick-hint" style="color:var(--text-3);font-size:13px;margin:8px 0 0">Usually <code>C:\Program Files (x86)\World of Warcraft\_classic_era_</code>. Chrome and Edge can remember the folder; Firefox and Safari will ask each time.</p>
+      <p class="hint" id="pick-hint" style="color:var(--text-3);font-size:13px;margin:8px 0 0">Usually <code>C:\Program Files (x86)\World of Warcraft\_classic_era_</code>. Your browser will ask to confirm “uploading” the folder — that is just how it grants this page read access; nothing leaves your computer. Picking only the <code>WTF</code> folder works too (you lose the installed-Questie and RestedXP extras).</p>
+      <p class="hint" id="pick-hint2" style="color:var(--text-3);font-size:13px;margin:6px 0 0"></p>
       <div id="scan-status" style="margin-top:14px"></div>
     </div>
     <div id="charsetup" class="card-b hidden" style="border-top:1px solid var(--line)"></div>
