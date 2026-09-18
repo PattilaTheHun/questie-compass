@@ -2,7 +2,7 @@
 
 **Find what you missed. See what it unlocks.**
 
-Questie Compass is a privacy-first quest dependency explorer for **World of Warcraft Classic**. It reads your local Questie data and turns thousands of quest records into a practical answer to a much simpler question:
+Questie Compass is a quest dependency explorer for **World of Warcraft Classic**. It reads your local Questie data and turns thousands of quest records into a practical answer to a much simpler question:
 
 > **What should I do next, and is an old quest preventing me from getting there?**
 
