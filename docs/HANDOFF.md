@@ -176,3 +176,15 @@ Copied from the play machine to `C:\Program Files (x86)\World of Warcraft\_class
   - Also has `completedWaypoints`, `enabledDungeons`, `flightPaths`, `discardPile` (steps the player skipped in the guide — check semantics).
 - Implication for the app: when RXP is present, read the per-character file for **active quests + current guide position**, and treat "in log" as a status distinct from "not started". Level can be inferred from `currentGuideName` range when present.
 - Network: the local Claude VM (device_bash) can reach api.github.com (HTTP 200), python3 3.10 / node 22 / git available → git push from the project folder is feasible with a token.
+
+## 12. Installed addon findings (2026-09-18, AddOns copied from play machine)
+
+**Questie 11.38.0** (`Questie-Classic.toc`: Interface 11508/11509, Version 11.38.0, no RequiredDeps) — classic layout confirmed on the player's PC:
+`Interface\AddOns\Questie\Database\Classic\classicQuestDB.lua` (1.04 MB), `Database\Corrections\classicQuestFixes.lua`, `Database\Corrections\QuestieQuestBlacklist.lua`, `Database\QuestieDB.lua`, `Database\Constants.lua`. Identical to the v11.38.0 tag used for the snapshot → `extract.py` stubs apply unchanged. No `QuestieDB` addon folder (new layout) present yet; keep detection for it.
+
+**RestedXP v4.11.0** — two guide sources:
+1. Plain-text free guides in `Interface\AddOns\RXPGuides\Guides\*.lua` (50 files; Horde only up to `RestedXP Horde 20-30.lua`, plus dungeon/profession/attunement guides). Format: `RXPGuides.RegisterGuide([[ ... ]])` with `#name`, `#group`, `#next`, `<< Horde !Warrior` class/faction filters, then `step << <filter>` blocks containing directives: `.accept <questId>`, `.turnin <questId>`, `.complete <questId>[,objIdx]`, `.goto`, `.xp <40,1` (level gates), `.isOnQuest`, `.zoneskip`, `#optional`, `#label/#requires/#completewith`, `.dungeon`.
+2. **Paid guides (30-40, 40-50, 50-60) exist ONLY in the account SavedVariables cache**: `RXPDB.profiles.global.guides["<group>|<group>|<name>|<n>"].groupOrContent` = Lua-escaped string of **raw DEFLATE** (`zlib.decompress(b, -15)` in Python; `DecompressionStream("deflate-raw")` in browsers) → same guide text format as above, with a leading `--<adler32>` line. Verified on "40-41 Stranglethorn Vale" (5,152 B → 24,080 B). 56 guides cached. These are the user's licensed content: parse locally only, never bundle or upload.
+3. Per-character file (`Mankrik\Tuskcleaver\SavedVariables\RXPGuides.lua`) gives `currentGuideGroup/currentGuideName/currentStep` and `questObjectivesCache` (active quest log).
+
+Plan for the RXP panel: decompress cached guides for the character's faction → parse steps → for the current + upcoming guide chapters, evaluate each `.accept` against the engine's status; flag Blocked (name missing prereqs) and Completed (skippable); use the level-span filter to choose chapters.

@@ -33,10 +33,10 @@ questie-compass/
 ```
 
 ## Phase 1 — Verify real-world file layouts (Claude, needs WoW folder access)
-- [ ] Confirm `Interface\AddOns\Questie\Database\Classic\classicQuestDB.lua` + `Corrections\classicQuestFixes.lua` exist and match the v11.38 format; record Questie version from `Questie.toc`.
-- [ ] Check whether an `Interface\AddOns\QuestieDB\` folder exists (new layout) and document its format.
-- [ ] Inspect `Interface\AddOns\RXPGuides\Guides\` — record the step syntax actually used (`.accept`, `.turnin`, `.complete`, level markers, guide headers) and how Horde/Alliance guides are named.
-- [ ] Enumerate `WTF\Account\*\SavedVariables\Questie.lua` and confirm multi-character structure.
+- [x] Questie 11.38.0 classic layout confirmed on player PC (see HANDOFF §12)
+- [x] No `QuestieDB` folder present yet; keep detection
+- [x] RXP step syntax + cached paid-guide format documented (HANDOFF §12)
+- [x] WTF layout confirmed (1 account, 4 chars, Questie data account-level)
 
 ## Phase 2 — Core engine in JavaScript (Claude)
 - [ ] Port `analyze.py` logic: eligibility, prerequisite slots (ALL/ANY), status precedence, missed detection, catch-up closure, questline union-find, unlock impact.
