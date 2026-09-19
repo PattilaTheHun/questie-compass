@@ -41,6 +41,20 @@
     $('#inp-lua').onchange = (e) => { const f = e.target.files[0]; if (f) onSource({ flavor: '', questieLua: [{ account: 'chosen file', file: f }], rxpAccount: [], rxpChar: [], questieAddon: { present: false, files: {} , tocs: [] }, rxpAddon: { present: false, guideFiles: [] } }); };
     const cp = $('#btn-copy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText($('#default-path').textContent); cp.textContent = 'copied ✓'; setTimeout(() => { cp.textContent = 'copy path'; }, 1800); } catch (e) { cp.textContent = 'select & copy manually'; } };
     document.addEventListener('click', onDocClick);
+    // back-to-top + section scroll-spy
+    const topBtn = $('#btn-top');
+    topBtn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    let spyT = 0;
+    window.addEventListener('scroll', () => {
+      topBtn.classList.toggle('show', window.scrollY > 600);
+      if (spyT) return; spyT = requestAnimationFrame(() => { spyT = 0; spy(); });
+    }, { passive: true });
+  }
+  function spy() {
+    const nav = document.getElementById('secnav'); if (!nav) return;
+    const links = Array.from(nav.querySelectorAll('a')); let best = null;
+    for (const a of links) { const el = document.querySelector(a.getAttribute('href')); if (!el) continue; if (el.getBoundingClientRect().top <= 200) best = a; }
+    for (const a of links) a.classList.toggle('on', a === best);
   }
 
   function status(html, kind) { $('#scan-status').innerHTML = html ? `<div class="notice ${kind || ''}">${html}</div>` : ''; }
@@ -100,25 +114,36 @@
       <div class="btn-row" style="margin-top:14px"><button class="btn primary" id="btn-go">Analyze ▸</button><span class="hint" style="color:var(--text-3);font-size:13px">You can change the level range and filters afterwards without re-reading anything.</span></div>`;
     const selChar = $('#sel-char'); selChar.onchange = fillFromChar; $('#sel-faction').onchange = fillRaces;
     $('#btn-go').onclick = analyze;
+    const saved = loadSavedChar();
+    if (saved) { const i = state.chars.findIndex((c) => c.key === saved.key); if (i >= 0) selChar.value = i; }
     fillFromChar();
   }
+  function loadSavedChar() { try { return JSON.parse(localStorage.getItem('qc-char') || 'null'); } catch (e) { return null; } }
   function fillFromChar() {
     const c = state.chars[+$('#sel-char').value]; state.selected = c;
     const inf = QC.inferCharacter(state.db, c.completed);
-    $('#sel-faction').value = inf.faction || 'Horde';
-    fillRaces(inf.raceBit); $('#race-hint').textContent = inf.raceNote || '';
+    const saved = loadSavedChar(); const useSaved = saved && saved.key === c.key;
+    $('#sel-faction').value = useSaved ? saved.faction : (inf.faction || 'Horde');
+    fillRaces(useSaved ? saved.raceBit : inf.raceBit); $('#race-hint').textContent = useSaved ? 'Restored from your last visit.' : (inf.raceNote || '');
     const cls = QC.CLASSES[c.class] || 0; if (cls) $('#sel-class').value = cls;
+    if (useSaved && saved.classBit) $('#sel-class').value = saved.classBit;
     // RestedXP per-character state gives a better level estimate
     const rxpChar = state.source.rxpChar.find((r) => r.key === c.key);
     const rxpAcct = state.source.rxpAccount.find((r) => r.account === c.account) || state.source.rxpAccount[0];
     state.rxp.available = !!(rxpAcct && rxpChar); $('#chk-rxp').disabled = !state.rxp.available; $('#chk-rxp').checked = state.rxp.available;
     $('#rxp-label').textContent = state.rxp.available ? 'Include RestedXP guide analysis' : 'RestedXP data not found for this character';
-    $('#inp-level').value = inf.level; $('#level-hint').textContent = `Estimated from your completed quests. Correct it if needed.`;
+    if (useSaved) { $('#inp-level').value = saved.level; $('#level-hint').textContent = 'Restored from your last visit. Correct it if needed.'; }
+    else { $('#inp-level').value = inf.level; $('#level-hint').textContent = `Estimated from your completed quests. Correct it if needed.`; }
+    if (useSaved && typeof saved.rxp === 'boolean' && state.rxp.available) $('#chk-rxp').checked = saved.rxp;
     if (rxpChar) {
       FS.readText(rxpChar.file).then((t) => {
         const cs = RXP.parseCharacterFile(t); state.rxp.charState = cs;
         const m = /^(\d+)-(\d+)/.exec(cs.currentGuideName || '');
-        if (m) { $('#inp-level').value = +m[1]; $('#level-hint').textContent = 'From your RestedXP position. Correct it if needed.'; }
+        if (m) {
+          const guideLevel = +m[1];
+          if (!useSaved) { $('#inp-level').value = guideLevel; $('#level-hint').textContent = 'From your RestedXP position. Correct it if needed.'; }
+          else if (guideLevel > +$('#inp-level').value) { $('#inp-level').value = guideLevel; $('#level-hint').textContent = 'Raised to match your RestedXP position. Correct it if needed.'; }
+        }
       });
     }
     const ageDays = Math.round((Date.now() - c.fileDate) / 864e5);
@@ -137,6 +162,7 @@
     const c = state.selected;
     state.player = { level: Math.max(1, Math.min(60, +$('#inp-level').value || 1)), raceBit: +$('#sel-race').value, classBit: +$('#sel-class').value, faction: $('#sel-faction').value };
     state.rxp.enabled = state.rxp.available && $('#chk-rxp').checked;
+    try { localStorage.setItem('qc-char', JSON.stringify({ key: c.key, faction: state.player.faction, raceBit: state.player.raceBit, classBit: state.player.classBit, level: state.player.level, rxp: $('#chk-rxp').checked })); } catch (e) { /* ignore */ }
     let inLog = [];
     if (state.rxp.enabled && state.rxp.charState) inLog = state.rxp.charState.activeQuests;
     state.analysis = QC.analyze(state.db, Object.assign({ completed: c.completed, inLog }, state.player));
@@ -145,6 +171,8 @@
     if (!(state.f.lo <= state.player.level && state.player.level <= state.f.hi) || (state.f.lo === 1 && state.f.hi === 60)) { state.f.lo = sp[0]; state.f.hi = sp[1]; }
     if (state.rxp.enabled) await loadRxp();
     $('#setup').classList.add('hidden'); $('#btn-restart').classList.remove('hidden');
+    const rb = $('#btn-rxp'); if (rb) { rb.classList.toggle('hidden', !state.rxp.enabled); rb.onclick = () => { const el = document.getElementById('sec-rxp'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }; }
+    $('#btn-top').classList.remove('hidden');
     renderHeaderPills();
     render();
     window.scrollTo(0, 0);
@@ -213,6 +241,18 @@
         <label class="inline-toggle"><input type="checkbox" id="f-prof" ${state.f.hideProf ? 'checked' : ''}> Hide professions</label>
         <label class="inline-toggle"><input type="checkbox" id="f-events" ${state.f.hideEvents ? 'checked' : ''}> Hide holiday / PvP</label>
         <label class="inline-toggle" title="Color quest names and levels the way the in-game quest log does, relative to your level"><input type="checkbox" id="f-colors" ${state.f.wowColors ? 'checked' : ''}> Quest-log colors</label>
+        <nav class="secnav" id="secnav">
+          <a href="#sec-catchup">Do these first<span class="c">${catchUp.length}</span></a>
+          <a href="#sec-coming">Coming up<span class="c">${ready.length + later.length + inLog.length}</span></a>
+          <a href="#sec-blocked">Blocked<span class="c">${blocked.length}</span></a>
+          <a href="#sec-lines">Questlines<span class="c">${lines.length}</span></a>
+          <a href="#sec-zones">Zones<span class="c">${R.zones.length}</span></a>
+          <a href="#sec-dungeons">Dungeons<span class="c">${R.dungeons.length}</span></a>
+          ${state.rxp.enabled ? `<a href="#sec-rxp" class="rxp">RestedXP<span class="c">${rxpIssues}</span></a>` : ''}
+          <a href="#sec-missed">Missed<span class="c">${missed.length}</span></a>
+          <a href="#sec-done">Completed<span class="c">${R.totals.completedKnown}</span></a>
+          <a href="#sec-all">All quests</a>
+        </nav>
       </div>
 
       <div class="tiles">
@@ -224,18 +264,6 @@
         ${state.rxp.enabled ? tile(rxpIssues, 'RestedXP steps to fix', rxpIssues ? 'bad' : 'ok', 'sec-rxp') : ''}
         ${tile(R.totals.completedKnown, 'Completed (all levels)', '', 'sec-done')}
       </div>
-      <nav class="secnav">
-        <a href="#sec-catchup">Do these first<span class="c">${catchUp.length}</span></a>
-        <a href="#sec-coming">Coming up<span class="c">${ready.length + later.length + inLog.length}</span></a>
-        <a href="#sec-blocked">Blocked<span class="c">${blocked.length}</span></a>
-        <a href="#sec-lines">Questlines<span class="c">${lines.length}</span></a>
-        <a href="#sec-zones">Zones<span class="c">${R.zones.length}</span></a>
-        <a href="#sec-dungeons">Dungeon prep<span class="c">${R.dungeons.length}</span></a>
-        ${state.rxp.enabled ? `<a href="#sec-rxp">RestedXP<span class="c">${rxpIssues}</span></a>` : ''}
-        <a href="#sec-missed">Missed<span class="c">${missed.length}</span></a>
-        <a href="#sec-done">Completed<span class="c">${R.totals.completedKnown}</span></a>
-        <a href="#sec-all">All quests</a>
-      </nav>
 
       ${section('sec-catchup', 'Do these first', `Quests you skipped that gate ${spanLabel} content, ranked by how much they unlock`, renderCatchUp(catchUp, R))}
       ${section('sec-coming', 'Coming up', `What you can pick up in ${spanLabel}, grouped by zone`, renderComing(inLog, ready, later, needsRep))}
