@@ -286,7 +286,9 @@
     $('#f-colors').onchange = (e) => { state.f.wowColors = e.target.checked; render(); };
     if ($('#lk-chapter')) {
       $('#lk-chapter').onchange = (e) => { state.lk.chapter = e.target.value; state.lk.step = 1; state.lk.q = ''; render(); scrollLookup(); };
-      $('#lk-step').onchange = (e) => { state.lk.step = +e.target.value || 1; state.lk.q = ''; render(); scrollLookup(); };
+      const goStep = () => { state.lk.step = +$('#lk-step').value || 1; state.lk.q = ''; render(); scrollLookup(); };
+      $('#lk-go').onclick = goStep;
+      $('#lk-step').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); goStep(); } };
       $('#lk-prev').onclick = () => { state.lk.step = Math.max(1, (state.lk.step || 1) - state.lk.window); state.lk.q = ''; render(); scrollLookup(); };
       $('#lk-next').onclick = () => { state.lk.step = (state.lk.step || 1) + state.lk.window; state.lk.q = ''; render(); scrollLookup(); };
       const here = $('#lk-here'); if (here) here.onclick = () => { const cs = state.rxp.charState; state.lk.chapter = cs.currentGuideName; state.lk.step = cs.currentStep || 1; state.lk.q = ''; render(); scrollLookup(); };
@@ -524,7 +526,7 @@
       <div class="lk-bar">
         <span class="lk-title">Guide step lookup</span>
         <select id="lk-chapter">${chapters.map((c) => `<option ${c.guide.name === state.lk.chapter ? 'selected' : ''}>${esc(c.guide.name)}</option>`).join('')}</select>
-        <span class="lk-stepctl"><button class="iconbtn" id="lk-prev" title="Earlier steps">◂</button><label>Step <input type="number" id="lk-step" min="1" max="${total}" value="${start}"> <span style="color:var(--text-3)">of ${total}</span></label><button class="iconbtn" id="lk-next" title="Later steps">▸</button></span>
+        <span class="lk-stepctl"><button class="iconbtn" id="lk-prev" title="Earlier steps">◂</button><label>Step <input type="number" id="lk-step" min="1" max="${total}" value="${start}"> <span style="color:var(--text-3)">of ${total}</span></label><button class="iconbtn lk-go" id="lk-go" title="Show this step">⟳</button><button class="iconbtn" id="lk-next" title="Later steps">▸</button></span>
         <input type="search" id="lk-q" placeholder="Search step text, quest or mob…" value="${esc(state.lk.q)}">
         ${cs.currentGuideName ? `<button class="iconbtn" id="lk-here" title="Jump to your current RestedXP step">⌖ Where am I</button>` : ''}
       </div>

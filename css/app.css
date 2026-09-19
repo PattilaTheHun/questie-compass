@@ -241,8 +241,10 @@ footer a { color: var(--text-2); }
 .lk-title { font-weight: 700; color: var(--purple); font-size: 15px; }
 .lk-bar select, .lk-bar input[type=search], .lk-bar input[type=number] { background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 13px; color: var(--text); }
 .lk-bar input[type=number] { width: 64px; }
-.lk-bar input[type=search] { min-width: 220px; flex: 1 1 200px; }
+.lk-bar input[type=search] { min-width: 194px; flex: 1 1 176px; max-width: 44%; }
 .lk-stepctl { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
+.lk-go { padding: 4px 8px; font-size: 15px; line-height: 1; color: var(--accent); }
+.lk-go:hover { border-color: var(--accent); }
 .lk-hint { color: var(--text-3); font-size: 12.5px; margin: 8px 0 10px; }
 .lk-list { display: flex; flex-direction: column; }
 .lk-step { display: grid; grid-template-columns: 64px 1fr; gap: 12px; padding: 10px 8px; border-top: 1px solid var(--line); border-radius: 6px; }
