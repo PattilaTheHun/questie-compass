@@ -171,7 +171,6 @@
     if (!(state.f.lo <= state.player.level && state.player.level <= state.f.hi) || (state.f.lo === 1 && state.f.hi === 60)) { state.f.lo = sp[0]; state.f.hi = sp[1]; }
     if (state.rxp.enabled) await loadRxp();
     $('#setup').classList.add('hidden'); $('#btn-restart').classList.remove('hidden');
-    const rb = $('#btn-rxp'); if (rb) { rb.classList.toggle('hidden', !state.rxp.enabled); rb.onclick = () => { const el = document.getElementById('sec-rxp'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }; }
     $('#btn-top').classList.remove('hidden');
     renderHeaderPills();
     render();
